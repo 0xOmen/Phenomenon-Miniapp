@@ -26,7 +26,7 @@ Event indexer for Phenomenon game contracts on **Base Sepolia**. Exposes GraphQL
    - **Option A**: Set `PONDER_DATABASE_URL` to a Postgres instance (local or cloud). Ponder will use it instead of PGlite, so reloads no longer close the DB. Example local: `postgresql://postgres:postgres@127.0.0.1:5432/ponder`.
    - **Option B**: Run the first full sync with `npm run start` (no file watching, no reload), then use `npm run dev` for day-to-day work. **For `npm run start` you must set `DATABASE_SCHEMA`** in `.env` (e.g. `DATABASE_SCHEMA=ponder`), or pass `--schema ponder`.
 
-3. **Production (Railway)**: Use `RAILWAY_TOKEN` and Railway Postgres; set `PONDER_DATABASE_URL` and `PONDER_RPC_URL_84532` in Railway env.
+3. **Production (Railway)**: Deploy so the miniapp can read indexed data. See **[DEPLOY_RAILWAY.md](./DEPLOY_RAILWAY.md)** for step-by-step (repo root directory, Postgres, start command, env vars). Set `PONDER_RPC_URL_84532` and link Railway Postgres `DATABASE_URL` to the indexer service.
 
 ## Contracts (Base Sepolia)
 
