@@ -21,7 +21,7 @@ const GAMES_QUERY = `
 
 export type PonderGame = {
   id: string;
-  gameNumber: string;
+  gameNumber: string | number;
   status: string;
   currentProphetTurn: number;
   prophetsRemaining: number;
@@ -40,8 +40,11 @@ export function usePonderGames() {
       });
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
+      if (json.errors?.length) throw new Error(json.errors[0]?.message ?? "GraphQL error");
       return (json.data?.games?.items ?? []) as PonderGame[];
     },
     refetchInterval: 10_000,
+    retry: false,
+    staleTime: 5_000,
   });
 }

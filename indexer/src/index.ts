@@ -72,6 +72,27 @@ ponder.on("GameplayEngine:prophetEnteredGame", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
+// Phenomenon also emits prophetRegistered in the same tx; record it as a game event (prophet already upserted above).
+ponder.on("Phenomenon:prophetRegistered", async ({ event, context }) => {
+  const { gameNumber, prophet: prophetAddress, prophetNum } = event.args;
+  const gameId = String(gameNumber);
+  const prophetIndex = Number(prophetNum);
+
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `prophetRegistered-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "prophetRegistered",
+      prophetIndex,
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
+});
+
 ponder.on("GameplayEngine:gameStarted", async ({ event, context }) => {
   const gameNumber = event.args.gameNumber;
   const gameId = String(gameNumber);

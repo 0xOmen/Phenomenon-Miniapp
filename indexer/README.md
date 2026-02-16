@@ -11,12 +11,14 @@ Event indexer for Phenomenon game contracts on **Base Sepolia**. Exposes GraphQL
    - Production: `PONDER_DATABASE_URL` for PostgreSQL (e.g. Railway).
 
 2. **Run locally** (from repo root so RPC URL is available):
+
    ```bash
    cd indexer
    # Set RPC (use your Alchemy Base Sepolia URL)
    export PONDER_RPC_URL_84532="https://base-sepolia.g.alchemy.com/v2/YOUR_KEY"
    npm run dev
    ```
+
    API (including GraphiQL): http://localhost:42069  
    GraphQL: http://localhost:42069/graphql
 
@@ -31,7 +33,7 @@ Event indexer for Phenomenon game contracts on **Base Sepolia**. Exposes GraphQL
 - Phenomenon: `PHENOMENON_ADDRESS`
 - GameplayEngine: `GAMEPLAY_ENGINE_ADDRESS`
 - TicketEngine: `TICKET_ENGINE_ADDRESS`  
-Start block: `37667749`.
+  Start block: `37667749`.
 
 ## Schema
 
@@ -40,4 +42,4 @@ Start block: `37667749`.
 - **acolyte** — ticket holdings per game/owner.
 - **game_event** — event log for “last action” and history.
 
-ABIs in `abis/` are events-only; full ABIs from [sepolia.basescan.org](https://sepolia.basescan.org) if needed.
+ABIs are the complete ABIs, not just the events.

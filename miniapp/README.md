@@ -2,6 +2,10 @@
 
 Farcaster miniapp for the Phenomenon game (Base Sepolia). Reads game state from the Ponder indexer GraphQL; uses Farcaster wallet for transactions.
 
+## Deploy to Vercel (Farcaster preview)
+
+Use **the repo root** when connecting Vercel: `https://github.com/0xOmen/Phenomenon-Miniapp`, then set **Root Directory** to **`miniapp`**. Full steps, env vars, and manifest/asset notes: see **[DEPLOY_VERCEL.md](./DEPLOY_VERCEL.md)**.
+
 ## Setup
 
 1. Copy `.env.example` to `.env.local`.
