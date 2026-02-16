@@ -14,6 +14,9 @@ ponder.on("GameplayEngine:prophetEnteredGame", async ({ event, context }) => {
   const { prophetNumber, sender, gameNumber } = event.args;
   const gameId = String(gameNumber);
 
+  const configRow = await context.db.find(config, { id: "0" });
+  const prophetsRequired = configRow ? configRow.numberOfProphets : 2;
+
   await context.db
     .insert(game)
     .values({
@@ -22,6 +25,7 @@ ponder.on("GameplayEngine:prophetEnteredGame", async ({ event, context }) => {
       status: GAME_STATUS.open,
       currentProphetTurn: 0,
       prophetsRemaining: 0, // updated below
+      prophetsRequired,
       totalTickets: 0n,
       tokenBalance: 0n,
       startBlock: event.block.number,
@@ -160,6 +164,13 @@ ponder.on("Phenomenon:numberOfProphetsSet", async ({ event, context }) => {
     .insert(config)
     .values({ id: "0", numberOfProphets })
     .onConflictDoUpdate((row) => ({ numberOfProphets }));
+  // Backfill existing games that have null prophetsRequired (e.g. game 0 created by prophetEnteredGame)
+  const allGames = await context.db.sql.query.game.findMany();
+  for (const g of allGames) {
+    if (g.prophetsRequired == null) {
+      await context.db.update(game, { id: g.id }).set({ prophetsRequired: numberOfProphets });
+    }
+  }
 });
 
 ponder.on("Phenomenon:gameReset", async ({ event, context }) => {
