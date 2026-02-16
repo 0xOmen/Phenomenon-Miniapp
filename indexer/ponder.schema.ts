@@ -1,5 +1,15 @@
 import { onchainTable, index, relations } from "ponder";
 
+// Global config from Phenomenon (e.g. numberOfProphetsSet)
+export const config = onchainTable(
+  "config",
+  (t) => ({
+    id: t.text().primaryKey(), // "0" = single row
+    numberOfProphets: t.integer().notNull(),
+  }),
+  () => ({}),
+);
+
 // Game state per game number
 export const game = onchainTable(
   "game",
@@ -9,6 +19,7 @@ export const game = onchainTable(
     status: t.text().notNull(), // "open" | "started" | "oracle" | "ended"
     currentProphetTurn: t.integer().notNull(), // prophet index
     prophetsRemaining: t.integer().notNull(),
+    prophetsRequired: t.integer(), // from numberOfProphetsSet when game created
     totalTickets: t.bigint().notNull(),
     tokenBalance: t.bigint().notNull(),
     startBlock: t.bigint(),

@@ -1,5 +1,5 @@
 import { ponder } from "ponder:registry";
-import { game, prophet, acolyte, gameEvent } from "ponder:schema";
+import { game, prophet, acolyte, gameEvent, config } from "ponder:schema";
 
 const GAME_STATUS = {
   open: "open",
@@ -154,9 +154,20 @@ ponder.on("Phenomenon:gameEnded", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
+ponder.on("Phenomenon:numberOfProphetsSet", async ({ event, context }) => {
+  const numberOfProphets = Number(event.args.numberOfProphets);
+  await context.db
+    .insert(config)
+    .values({ id: "0", numberOfProphets })
+    .onConflictDoUpdate((row) => ({ numberOfProphets }));
+});
+
 ponder.on("Phenomenon:gameReset", async ({ event, context }) => {
   const newGameNumber = event.args.newGameNumber;
   const gameId = String(newGameNumber);
+
+  const configRow = await context.db.find(config, { id: "0" });
+  const prophetsRequired = configRow ? configRow.numberOfProphets : 2;
 
   await context.db
     .insert(game)
@@ -166,6 +177,7 @@ ponder.on("Phenomenon:gameReset", async ({ event, context }) => {
       status: GAME_STATUS.open,
       currentProphetTurn: 0,
       prophetsRemaining: 0,
+      prophetsRequired,
       totalTickets: 0n,
       tokenBalance: 0n,
       startBlock: event.block.number,
@@ -175,6 +187,7 @@ ponder.on("Phenomenon:gameReset", async ({ event, context }) => {
     .onConflictDoUpdate((row) => ({
       status: GAME_STATUS.open,
       prophetsRemaining: 0,
+      prophetsRequired,
       startBlock: event.block.number,
     }));
 

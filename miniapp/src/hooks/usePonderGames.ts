@@ -12,12 +12,24 @@ const GAMES_QUERY = `
         status
         currentProphetTurn
         prophetsRemaining
+        prophetsRequired
         totalTickets
         tokenBalance
+        prophets(limit: 20) {
+          items {
+            prophetIndex
+            playerAddress
+          }
+        }
       }
     }
   }
 `;
+
+export type PonderProphet = {
+  prophetIndex: number;
+  playerAddress: string;
+};
 
 export type PonderGame = {
   id: string;
@@ -25,8 +37,10 @@ export type PonderGame = {
   status: string;
   currentProphetTurn: number;
   prophetsRemaining: number;
+  prophetsRequired?: number | null;
   totalTickets: string;
   tokenBalance: string;
+  prophets?: { items: PonderProphet[] };
 };
 
 export function usePonderGames() {
