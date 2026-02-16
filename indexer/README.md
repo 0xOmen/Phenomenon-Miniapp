@@ -6,6 +6,7 @@ Event indexer for Phenomenon game contracts on **Base Sepolia**. Exposes GraphQL
 
 1. **Env**: Copy `.env.example` to `.env` and set:
    - `PONDER_RPC_URL_84532` — Base Sepolia RPC (e.g. from root `.env`: same value as `ALCHEMY_BASE_SEPOLIA_RPC_URL`).
+   - `DATABASE_SCHEMA` — Required for `npm run start` (e.g. `ponder`; max 45 chars).
    - Optional: `PHENOMENON_ADDRESS`, `GAMEPLAY_ENGINE_ADDRESS`, `TICKET_ENGINE_ADDRESS`, `PHENOMENON_START_BLOCK` (defaults in `ponder.config.ts`).
    - Production: `PONDER_DATABASE_URL` for PostgreSQL (e.g. Railway).
 
@@ -18,6 +19,10 @@ Event indexer for Phenomenon game contracts on **Base Sepolia**. Exposes GraphQL
    ```
    API (including GraphiQL): http://localhost:42069  
    GraphQL: http://localhost:42069/graphql
+
+   **If you see "PGlite is closed"** during backfill (e.g. after a file save): the dev server hot-reloads and closes the in-process DB. Either:
+   - **Option A**: Set `PONDER_DATABASE_URL` to a Postgres instance (local or cloud). Ponder will use it instead of PGlite, so reloads no longer close the DB. Example local: `postgresql://postgres:postgres@127.0.0.1:5432/ponder`.
+   - **Option B**: Run the first full sync with `npm run start` (no file watching, no reload), then use `npm run dev` for day-to-day work. **For `npm run start` you must set `DATABASE_SCHEMA`** in `.env` (e.g. `DATABASE_SCHEMA=ponder`), or pass `--schema ponder`.
 
 3. **Production (Railway)**: Use `RAILWAY_TOKEN` and Railway Postgres; set `PONDER_DATABASE_URL` and `PONDER_RPC_URL_84532` in Railway env.
 

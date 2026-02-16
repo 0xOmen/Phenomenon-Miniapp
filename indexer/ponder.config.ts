@@ -9,7 +9,15 @@ const TICKET_ENGINE_ADDRESS = process.env.TICKET_ENGINE_ADDRESS ?? "0x18A7DB39F6
 
 const START_BLOCK = Number(process.env.PHENOMENON_START_BLOCK ?? "37667749");
 
+// Use Postgres when PONDER_DATABASE_URL is set to avoid "PGlite is closed" errors
+// when the dev server hot-reloads during backfill. Otherwise Ponder uses in-process PGlite.
+const databaseUrl = process.env.PONDER_DATABASE_URL;
+
 export default createConfig({
+  database:
+    databaseUrl ?
+      { kind: "postgres" as const, connectionString: databaseUrl }
+    : undefined,
   chains: {
     baseSepolia: {
       id: 84532,

@@ -8,10 +8,10 @@ const GAME_STATUS = {
   ended: "ended",
 } as const;
 
-// ---- Phenomenon: game lifecycle ----
+// ---- GameplayEngine: prophet entry + game started ----
 
-ponder.on("Phenomenon:ProphetEnteredGame", async ({ event, context }) => {
-  const { gameNumber, prophetNumber, sender } = event.args;
+ponder.on("GameplayEngine:prophetEnteredGame", async ({ event, context }) => {
+  const { prophetNumber, sender, gameNumber } = event.args;
   const gameId = String(gameNumber);
 
   await context.db
@@ -28,9 +28,6 @@ ponder.on("Phenomenon:ProphetEnteredGame", async ({ event, context }) => {
     })
     .onConflictDoNothing();
 
-  const existingProphets = await context.db.sql.query.prophet.findMany({
-    where: (t, { eq }) => eq(t.gameId, gameId),
-  });
   const prophetIndex = Number(prophetNumber);
   const prophetId = `${gameId}-${prophetIndex}`;
 
@@ -55,22 +52,27 @@ ponder.on("Phenomenon:ProphetEnteredGame", async ({ event, context }) => {
       role: "prophet",
     }));
 
-  const count = existingProphets.length + 1;
-  await context.db.update(game, { id: gameId }).set({ prophetsRemaining: count });
-
-  await context.db.insert(gameEvent).values({
-    id: `${event.log.id}`,
-    gameId,
-    type: "prophetEnteredGame",
-    prophetIndex,
-    targetIndex: null,
-    success: true,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
+  const prophetsForGame = await context.db.sql.query.prophet.findMany({
+    where: (t, { eq }) => eq(t.gameId, gameId),
   });
+  await context.db.update(game, { id: gameId }).set({ prophetsRemaining: prophetsForGame.length });
+
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `prophetEnteredGame-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "prophetEnteredGame",
+      prophetIndex,
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
-ponder.on("Phenomenon:GameStarted", async ({ event, context }) => {
+ponder.on("GameplayEngine:gameStarted", async ({ event, context }) => {
   const gameNumber = event.args.gameNumber;
   const gameId = String(gameNumber);
 
@@ -79,19 +81,24 @@ ponder.on("Phenomenon:GameStarted", async ({ event, context }) => {
     currentProphetTurn: 0,
   });
 
-  await context.db.insert(gameEvent).values({
-    id: `GameStarted-${event.block.hash}-${event.log.logIndex}`,
-    gameId,
-    type: "gameStarted",
-    prophetIndex: null,
-    targetIndex: null,
-    success: true,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `gameStarted-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "gameStarted",
+      prophetIndex: null,
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
-ponder.on("Phenomenon:CurrentTurn", async ({ event, context }) => {
+// ---- Phenomenon: turn, ended, reset ----
+
+ponder.on("Phenomenon:currentTurn", async ({ event, context }) => {
   const nextProphetTurn = event.args.nextProphetTurn;
   const games = await context.db.sql.query.game.findMany({
     where: (t, { eq }) => eq(t.status, GAME_STATUS.started),
@@ -101,7 +108,7 @@ ponder.on("Phenomenon:CurrentTurn", async ({ event, context }) => {
   }
 });
 
-ponder.on("Phenomenon:GameEnded", async ({ event, context }) => {
+ponder.on("Phenomenon:gameEnded", async ({ event, context }) => {
   const { gameNumber, currentProphetTurn } = event.args;
   const gameId = String(gameNumber);
 
@@ -111,19 +118,22 @@ ponder.on("Phenomenon:GameEnded", async ({ event, context }) => {
     winnerProphetIndex: Number(currentProphetTurn),
   });
 
-  await context.db.insert(gameEvent).values({
-    id: `GameEnded-${event.block.hash}-${event.log.logIndex}`,
-    gameId,
-    type: "gameEnded",
-    prophetIndex: Number(currentProphetTurn),
-    targetIndex: null,
-    success: true,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `gameEnded-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "gameEnded",
+      prophetIndex: Number(currentProphetTurn),
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
-ponder.on("Phenomenon:GameReset", async ({ event, context }) => {
+ponder.on("Phenomenon:gameReset", async ({ event, context }) => {
   const newGameNumber = event.args.newGameNumber;
   const gameId = String(newGameNumber);
 
@@ -147,21 +157,24 @@ ponder.on("Phenomenon:GameReset", async ({ event, context }) => {
       startBlock: event.block.number,
     }));
 
-  await context.db.insert(gameEvent).values({
-    id: `GameReset-${event.block.hash}-${event.log.logIndex}`,
-    gameId,
-    type: "gameReset",
-    prophetIndex: null,
-    targetIndex: null,
-    success: true,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `gameReset-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "gameReset",
+      prophetIndex: null,
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
 // ---- GameplayEngine: miracle, smite, accusation ----
 
-ponder.on("GameplayEngine:MiracleAttempted", async ({ event, context }) => {
+ponder.on("GameplayEngine:miracleAttempted", async ({ event, context }) => {
   const { isSuccess, currentProphetTurn } = event.args;
   const games = await context.db.sql.query.game.findMany({
     where: (t, { eq }) => eq(t.status, GAME_STATUS.started),
@@ -174,20 +187,23 @@ ponder.on("GameplayEngine:MiracleAttempted", async ({ event, context }) => {
         isAlive: isSuccess ? existing.isAlive : false,
       });
     }
-    await context.db.insert(gameEvent).values({
-      id: `MiracleAttempted-${event.block.hash}-${event.log.logIndex}`,
-      gameId: g.id,
-      type: "miracleAttempted",
-      prophetIndex: Number(currentProphetTurn),
-      targetIndex: null,
-      success: isSuccess,
-      blockNumber: event.block.number,
-      transactionHash: event.transaction.hash,
-    });
+    await context.db
+      .insert(gameEvent)
+      .values({
+        id: `miracleAttempted-${event.block.hash}-${event.log.logIndex}`,
+        gameId: g.id,
+        type: "miracleAttempted",
+        prophetIndex: Number(currentProphetTurn),
+        targetIndex: null,
+        success: isSuccess,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
   }
 });
 
-ponder.on("GameplayEngine:SmiteAttempted", async ({ event, context }) => {
+ponder.on("GameplayEngine:smiteAttempted", async ({ event, context }) => {
   const { target, isSuccess, currentProphetTurn } = event.args;
   const games = await context.db.sql.query.game.findMany({
     where: (t, { eq }) => eq(t.status, GAME_STATUS.started),
@@ -203,20 +219,23 @@ ponder.on("GameplayEngine:SmiteAttempted", async ({ event, context }) => {
     if (turnProphet && !isSuccess) {
       await context.db.update(prophet, { id: turnProphetId }).set({ isFree: false });
     }
-    await context.db.insert(gameEvent).values({
-      id: `SmiteAttempted-${event.block.hash}-${event.log.logIndex}`,
-      gameId: g.id,
-      type: "smiteAttempted",
-      prophetIndex: Number(currentProphetTurn),
-      targetIndex: Number(target),
-      success: isSuccess,
-      blockNumber: event.block.number,
-      transactionHash: event.transaction.hash,
-    });
+    await context.db
+      .insert(gameEvent)
+      .values({
+        id: `smiteAttempted-${event.block.hash}-${event.log.logIndex}`,
+        gameId: g.id,
+        type: "smiteAttempted",
+        prophetIndex: Number(currentProphetTurn),
+        targetIndex: Number(target),
+        success: isSuccess,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
   }
 });
 
-ponder.on("GameplayEngine:Accusation", async ({ event, context }) => {
+ponder.on("GameplayEngine:accusation", async ({ event, context }) => {
   const { isSuccess, targetIsAlive, currentProphetTurn, _target } = event.args;
   const games = await context.db.sql.query.game.findMany({
     where: (t, { eq }) => eq(t.status, GAME_STATUS.started),
@@ -237,22 +256,25 @@ ponder.on("GameplayEngine:Accusation", async ({ event, context }) => {
       const turnProphetId = `${g.id}-${Number(currentProphetTurn)}`;
       await context.db.update(prophet, { id: turnProphetId }).set({ isFree: false });
     }
-    await context.db.insert(gameEvent).values({
-      id: `Accusation-${event.block.hash}-${event.log.logIndex}`,
-      gameId: g.id,
-      type: "accusation",
-      prophetIndex: Number(currentProphetTurn),
-      targetIndex: targetIdx,
-      success: isSuccess,
-      blockNumber: event.block.number,
-      transactionHash: event.transaction.hash,
-    });
+    await context.db
+      .insert(gameEvent)
+      .values({
+        id: `accusation-${event.block.hash}-${event.log.logIndex}`,
+        gameId: g.id,
+        type: "accusation",
+        prophetIndex: Number(currentProphetTurn),
+        targetIndex: targetIdx,
+        success: isSuccess,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
   }
 });
 
 // ---- TicketEngine: tickets ----
 
-ponder.on("TicketEngine:GainReligion", async ({ event, context }) => {
+ponder.on("TicketEngine:gainReligion", async ({ event, context }) => {
   const { _target, numTicketsBought, totalPrice, sender } = event.args;
   const games = await context.db.sql.query.game.findMany({
     orderBy: (t, { desc }) => desc(t.gameNumber),
@@ -287,20 +309,23 @@ ponder.on("TicketEngine:GainReligion", async ({ event, context }) => {
     });
   }
 
-  await context.db.insert(gameEvent).values({
-    id: `GainReligion-${event.block.hash}-${event.log.logIndex}`,
-    gameId,
-    type: "gainReligion",
-    prophetIndex: Number(_target),
-    targetIndex: null,
-    success: true,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `gainReligion-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "gainReligion",
+      prophetIndex: Number(_target),
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
-ponder.on("TicketEngine:ReligionLost", async ({ event, context }) => {
-  const { _target, numTicketsSold, sender } = event.args;
+ponder.on("TicketEngine:religionLost", async ({ event, context }) => {
+  const { _target, numTicketsSold, totalPrice, sender } = event.args;
   const games = await context.db.sql.query.game.findMany({
     orderBy: (t, { desc }) => desc(t.gameNumber),
     limit: 1,
@@ -325,29 +350,35 @@ ponder.on("TicketEngine:ReligionLost", async ({ event, context }) => {
     });
   }
 
-  await context.db.insert(gameEvent).values({
-    id: `ReligionLost-${event.block.hash}-${event.log.logIndex}`,
-    gameId,
-    type: "religionLost",
-    prophetIndex: Number(_target),
-    targetIndex: null,
-    success: true,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `religionLost-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "religionLost",
+      prophetIndex: Number(_target),
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
 
-ponder.on("TicketEngine:TicketsClaimed", async ({ event, context }) => {
-  const { gameNumber } = event.args;
+ponder.on("TicketEngine:ticketsClaimed", async ({ event, context }) => {
+  const { player, tokensSent, gameNumber } = event.args;
   const gameId = String(gameNumber);
-  await context.db.insert(gameEvent).values({
-    id: `TicketsClaimed-${event.block.hash}-${event.log.logIndex}`,
-    gameId,
-    type: "ticketsClaimed",
-    prophetIndex: null,
-    targetIndex: null,
-    success: true,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-  });
+  await context.db
+    .insert(gameEvent)
+    .values({
+      id: `ticketsClaimed-${event.block.hash}-${event.log.logIndex}`,
+      gameId,
+      type: "ticketsClaimed",
+      prophetIndex: null,
+      targetIndex: null,
+      success: true,
+      blockNumber: event.block.number,
+      transactionHash: event.transaction.hash,
+    })
+    .onConflictDoNothing();
 });
