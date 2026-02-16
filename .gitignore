@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+indexer/node_modules/
+miniapp/node_modules/
+
+# Env (keep .env.example files)
+.env
+.env.local
+.env.*.local
+indexer/.env
+miniapp/.env.local
+
+# Build / runtime
+miniapp/.next/
+miniapp/out/
+indexer/.ponder/
+
+# IDE / OS
+.idea/
+*.log
+.DS_Store

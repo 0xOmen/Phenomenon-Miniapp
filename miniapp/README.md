@@ -1,0 +1,31 @@
+# Phenomenon Miniapp
+
+Farcaster miniapp for the Phenomenon game (Base Sepolia). Reads game state from the Ponder indexer GraphQL; uses Farcaster wallet for transactions.
+
+## Setup
+
+1. Copy `.env.example` to `.env.local`.
+2. Set `NEXT_PUBLIC_PONDER_GRAPHQL_URL` to your Ponder GraphQL URL (e.g. `http://localhost:42069/graphql` when running the indexer locally).
+3. Optionally set `NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL` and contract addresses (defaults in .env.example).
+
+## Run
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. In a Farcaster client (e.g. Warpcast), open the miniapp URL to use the in-app wallet.
+
+## Stack
+
+- Next.js (App Router), React, TypeScript
+- @farcaster/miniapp-sdk, @farcaster/miniapp-wagmi-connector, Wagmi, viem
+- Base Sepolia; contract addresses from env
+- Tailwind CSS
+
+## Next
+
+- Wire contract writes (enterGame, performMiracle, getReligion, etc.) and fDEGEN approve.
+- Query Ponder GraphQL for current game and prophets.
+- Integrate Neynar for Farcaster usernames/PFPs.

@@ -1,0 +1,407 @@
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+scalar BigInt
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type ViewPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}
+
+type Meta {
+  status: JSON
+}
+
+type Query {
+  game(id: String!): game
+  games(where: gameFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int, offset: Int): gamePage!
+  prophet(id: String!): prophet
+  prophets(where: prophetFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int, offset: Int): prophetPage!
+  acolyte(id: String!): acolyte
+  acolytes(where: acolyteFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int, offset: Int): acolytePage!
+  gameEvent(id: String!): gameEvent
+  gameEvents(where: gameEventFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int, offset: Int): gameEventPage!
+  _meta: Meta
+}
+
+type game {
+  id: String!
+  gameNumber: BigInt!
+  status: String!
+  currentProphetTurn: Int!
+  prophetsRemaining: Int!
+  totalTickets: BigInt!
+  tokenBalance: BigInt!
+  startBlock: BigInt
+  endBlock: BigInt
+  winnerProphetIndex: Int
+  prophets(where: prophetFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int, offset: Int): prophetPage
+  acolytes(where: acolyteFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int, offset: Int): acolytePage
+  events(where: gameEventFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int, offset: Int): gameEventPage
+}
+
+type prophetPage {
+  items: [prophet!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type prophet {
+  id: String!
+  gameId: String!
+  prophetIndex: Int!
+  playerAddress: String!
+  isAlive: Boolean!
+  isFree: Boolean!
+  role: String!
+  accolites: BigInt!
+  highPriests: BigInt!
+  tokensPerTicket: BigInt
+  game: game
+}
+
+input prophetFilter {
+  AND: [prophetFilter]
+  OR: [prophetFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  gameId: String
+  gameId_not: String
+  gameId_in: [String]
+  gameId_not_in: [String]
+  gameId_contains: String
+  gameId_not_contains: String
+  gameId_starts_with: String
+  gameId_ends_with: String
+  gameId_not_starts_with: String
+  gameId_not_ends_with: String
+  prophetIndex: Int
+  prophetIndex_not: Int
+  prophetIndex_in: [Int]
+  prophetIndex_not_in: [Int]
+  prophetIndex_gt: Int
+  prophetIndex_lt: Int
+  prophetIndex_gte: Int
+  prophetIndex_lte: Int
+  playerAddress: String
+  playerAddress_not: String
+  playerAddress_in: [String]
+  playerAddress_not_in: [String]
+  playerAddress_contains: String
+  playerAddress_not_contains: String
+  playerAddress_starts_with: String
+  playerAddress_ends_with: String
+  playerAddress_not_starts_with: String
+  playerAddress_not_ends_with: String
+  isAlive: Boolean
+  isAlive_not: Boolean
+  isAlive_in: [Boolean]
+  isAlive_not_in: [Boolean]
+  isFree: Boolean
+  isFree_not: Boolean
+  isFree_in: [Boolean]
+  isFree_not_in: [Boolean]
+  role: String
+  role_not: String
+  role_in: [String]
+  role_not_in: [String]
+  role_contains: String
+  role_not_contains: String
+  role_starts_with: String
+  role_ends_with: String
+  role_not_starts_with: String
+  role_not_ends_with: String
+  accolites: BigInt
+  accolites_not: BigInt
+  accolites_in: [BigInt]
+  accolites_not_in: [BigInt]
+  accolites_gt: BigInt
+  accolites_lt: BigInt
+  accolites_gte: BigInt
+  accolites_lte: BigInt
+  highPriests: BigInt
+  highPriests_not: BigInt
+  highPriests_in: [BigInt]
+  highPriests_not_in: [BigInt]
+  highPriests_gt: BigInt
+  highPriests_lt: BigInt
+  highPriests_gte: BigInt
+  highPriests_lte: BigInt
+  tokensPerTicket: BigInt
+  tokensPerTicket_not: BigInt
+  tokensPerTicket_in: [BigInt]
+  tokensPerTicket_not_in: [BigInt]
+  tokensPerTicket_gt: BigInt
+  tokensPerTicket_lt: BigInt
+  tokensPerTicket_gte: BigInt
+  tokensPerTicket_lte: BigInt
+}
+
+type acolytePage {
+  items: [acolyte!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type acolyte {
+  id: String!
+  gameId: String!
+  ownerAddress: String!
+  prophetIndex: Int!
+  ticketCount: BigInt!
+  game: game
+}
+
+input acolyteFilter {
+  AND: [acolyteFilter]
+  OR: [acolyteFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  gameId: String
+  gameId_not: String
+  gameId_in: [String]
+  gameId_not_in: [String]
+  gameId_contains: String
+  gameId_not_contains: String
+  gameId_starts_with: String
+  gameId_ends_with: String
+  gameId_not_starts_with: String
+  gameId_not_ends_with: String
+  ownerAddress: String
+  ownerAddress_not: String
+  ownerAddress_in: [String]
+  ownerAddress_not_in: [String]
+  ownerAddress_contains: String
+  ownerAddress_not_contains: String
+  ownerAddress_starts_with: String
+  ownerAddress_ends_with: String
+  ownerAddress_not_starts_with: String
+  ownerAddress_not_ends_with: String
+  prophetIndex: Int
+  prophetIndex_not: Int
+  prophetIndex_in: [Int]
+  prophetIndex_not_in: [Int]
+  prophetIndex_gt: Int
+  prophetIndex_lt: Int
+  prophetIndex_gte: Int
+  prophetIndex_lte: Int
+  ticketCount: BigInt
+  ticketCount_not: BigInt
+  ticketCount_in: [BigInt]
+  ticketCount_not_in: [BigInt]
+  ticketCount_gt: BigInt
+  ticketCount_lt: BigInt
+  ticketCount_gte: BigInt
+  ticketCount_lte: BigInt
+}
+
+type gameEventPage {
+  items: [gameEvent!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type gameEvent {
+  id: String!
+  gameId: String!
+  type: String!
+  prophetIndex: Int
+  targetIndex: Int
+  success: Boolean
+  blockNumber: BigInt!
+  transactionHash: String!
+  game: game
+}
+
+input gameEventFilter {
+  AND: [gameEventFilter]
+  OR: [gameEventFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  gameId: String
+  gameId_not: String
+  gameId_in: [String]
+  gameId_not_in: [String]
+  gameId_contains: String
+  gameId_not_contains: String
+  gameId_starts_with: String
+  gameId_ends_with: String
+  gameId_not_starts_with: String
+  gameId_not_ends_with: String
+  type: String
+  type_not: String
+  type_in: [String]
+  type_not_in: [String]
+  type_contains: String
+  type_not_contains: String
+  type_starts_with: String
+  type_ends_with: String
+  type_not_starts_with: String
+  type_not_ends_with: String
+  prophetIndex: Int
+  prophetIndex_not: Int
+  prophetIndex_in: [Int]
+  prophetIndex_not_in: [Int]
+  prophetIndex_gt: Int
+  prophetIndex_lt: Int
+  prophetIndex_gte: Int
+  prophetIndex_lte: Int
+  targetIndex: Int
+  targetIndex_not: Int
+  targetIndex_in: [Int]
+  targetIndex_not_in: [Int]
+  targetIndex_gt: Int
+  targetIndex_lt: Int
+  targetIndex_gte: Int
+  targetIndex_lte: Int
+  success: Boolean
+  success_not: Boolean
+  success_in: [Boolean]
+  success_not_in: [Boolean]
+  blockNumber: BigInt
+  blockNumber_not: BigInt
+  blockNumber_in: [BigInt]
+  blockNumber_not_in: [BigInt]
+  blockNumber_gt: BigInt
+  blockNumber_lt: BigInt
+  blockNumber_gte: BigInt
+  blockNumber_lte: BigInt
+  transactionHash: String
+  transactionHash_not: String
+  transactionHash_in: [String]
+  transactionHash_not_in: [String]
+  transactionHash_contains: String
+  transactionHash_not_contains: String
+  transactionHash_starts_with: String
+  transactionHash_ends_with: String
+  transactionHash_not_starts_with: String
+  transactionHash_not_ends_with: String
+}
+
+type gamePage {
+  items: [game!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input gameFilter {
+  AND: [gameFilter]
+  OR: [gameFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  gameNumber: BigInt
+  gameNumber_not: BigInt
+  gameNumber_in: [BigInt]
+  gameNumber_not_in: [BigInt]
+  gameNumber_gt: BigInt
+  gameNumber_lt: BigInt
+  gameNumber_gte: BigInt
+  gameNumber_lte: BigInt
+  status: String
+  status_not: String
+  status_in: [String]
+  status_not_in: [String]
+  status_contains: String
+  status_not_contains: String
+  status_starts_with: String
+  status_ends_with: String
+  status_not_starts_with: String
+  status_not_ends_with: String
+  currentProphetTurn: Int
+  currentProphetTurn_not: Int
+  currentProphetTurn_in: [Int]
+  currentProphetTurn_not_in: [Int]
+  currentProphetTurn_gt: Int
+  currentProphetTurn_lt: Int
+  currentProphetTurn_gte: Int
+  currentProphetTurn_lte: Int
+  prophetsRemaining: Int
+  prophetsRemaining_not: Int
+  prophetsRemaining_in: [Int]
+  prophetsRemaining_not_in: [Int]
+  prophetsRemaining_gt: Int
+  prophetsRemaining_lt: Int
+  prophetsRemaining_gte: Int
+  prophetsRemaining_lte: Int
+  totalTickets: BigInt
+  totalTickets_not: BigInt
+  totalTickets_in: [BigInt]
+  totalTickets_not_in: [BigInt]
+  totalTickets_gt: BigInt
+  totalTickets_lt: BigInt
+  totalTickets_gte: BigInt
+  totalTickets_lte: BigInt
+  tokenBalance: BigInt
+  tokenBalance_not: BigInt
+  tokenBalance_in: [BigInt]
+  tokenBalance_not_in: [BigInt]
+  tokenBalance_gt: BigInt
+  tokenBalance_lt: BigInt
+  tokenBalance_gte: BigInt
+  tokenBalance_lte: BigInt
+  startBlock: BigInt
+  startBlock_not: BigInt
+  startBlock_in: [BigInt]
+  startBlock_not_in: [BigInt]
+  startBlock_gt: BigInt
+  startBlock_lt: BigInt
+  startBlock_gte: BigInt
+  startBlock_lte: BigInt
+  endBlock: BigInt
+  endBlock_not: BigInt
+  endBlock_in: [BigInt]
+  endBlock_not_in: [BigInt]
+  endBlock_gt: BigInt
+  endBlock_lt: BigInt
+  endBlock_gte: BigInt
+  endBlock_lte: BigInt
+  winnerProphetIndex: Int
+  winnerProphetIndex_not: Int
+  winnerProphetIndex_in: [Int]
+  winnerProphetIndex_not_in: [Int]
+  winnerProphetIndex_gt: Int
+  winnerProphetIndex_lt: Int
+  winnerProphetIndex_gte: Int
+  winnerProphetIndex_lte: Int
+}
