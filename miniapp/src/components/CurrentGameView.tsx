@@ -606,8 +606,13 @@ export function CurrentGameView({
                     } ${isSelected ? "ring-1 ring-gray-500" : ""}`}
                   >
                     <span className="text-gray-300">
-                      Prophet {p.prophetIndex}:{" "}
-                      <PlayerIdentity address={p.playerAddress} user={userInfo} />
+                      Prophet {p.prophetIndex}
+                      {p.role === "highPriest" && (
+                        <span className="ml-1.5 rounded bg-amber-900/60 px-1.5 py-0.5 text-xs font-medium text-amber-200">
+                          High Priest
+                        </span>
+                      )}
+                      : <PlayerIdentity address={p.playerAddress} user={userInfo} />
                     </span>
                     <span className="text-gray-500">
                       {p.isAlive ? "alive" : "out"}

@@ -97,6 +97,9 @@ ponder.on("Phenomenon:prophetRegistered", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
+// Role value from Phenomenon.getProphetData (fourth return): 99 = High Priest
+const ROLE_HIGH_PRIEST = 99n;
+
 ponder.on("GameplayEngine:gameStarted", async ({ event, context }) => {
   const gameNumber = event.args.gameNumber;
   const gameId = String(gameNumber);
@@ -105,6 +108,27 @@ ponder.on("GameplayEngine:gameStarted", async ({ event, context }) => {
     status: GAME_STATUS.started,
     currentProphetTurn: 0,
   });
+
+  const prophetsForGame = await context.db.sql.query.prophet.findMany({
+    where: (t, { eq }) => eq(t.gameId, gameId),
+  });
+  const { Phenomenon } = context.contracts;
+  for (const p of prophetsForGame) {
+    try {
+      const data = await context.client.readContract({
+        abi: Phenomenon.abi,
+        address: Phenomenon.address,
+        functionName: "getProphetData",
+        args: [BigInt(p.prophetIndex)],
+        blockNumber: event.block.number,
+      });
+      const roleNum = data[3] as bigint;
+      const role = roleNum === ROLE_HIGH_PRIEST ? "highPriest" : "prophet";
+      await context.db.update(prophet, { id: p.id }).set({ role });
+    } catch {
+      // Leave role as default "prophet" if read fails (e.g. contract not yet updated)
+    }
+  }
 
   await context.db
     .insert(gameEvent)
