@@ -23,6 +23,7 @@ import {
 function RegisterProphetButton({ gameId }: { gameId: string }) {
   const { address } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
+  const [locallyApproved, setLocallyApproved] = useState(false);
   const { data: entranceFee } = useReadContract({
     address: PHENOMENON_ADDRESS,
     abi: phenomenonAbi,
@@ -37,23 +38,28 @@ function RegisterProphetButton({ gameId }: { gameId: string }) {
 
   const fee = entranceFee ?? BigInt(0);
   const hasEnoughAllowance = allowance != null && allowance >= fee;
+  const canPlay = hasEnoughAllowance || locallyApproved;
 
   const handleRegister = async () => {
     if (!address) return;
     try {
-      if (!hasEnoughAllowance && fee > BigInt(0)) {
+      if (!canPlay && fee > BigInt(0)) {
         await writeContractAsync({
           address: TEST_TOKEN_ADDRESS,
           abi: erc20Abi,
           functionName: "approve",
           args: [PHENOMENON_ADDRESS, fee],
         });
+        setLocallyApproved(true);
       }
       await writeContractAsync({
-        address: PHENOMENON_ADDRESS,
-        abi: phenomenonAbi,
-        functionName: "registerProphet",
-        args: [address],
+        address: GAMEPLAY_ENGINE_ADDRESS,
+        abi: gameplayEngineAbi,
+        functionName: "enterGame",
+        // For now we pass an empty allow list proof. If the
+        // deployed game enforces an allow list, this will
+        // revert and can be extended later to fetch a proof.
+        args: [[]],
       });
     } catch (e) {
       console.error(e);
@@ -69,7 +75,11 @@ function RegisterProphetButton({ gameId }: { gameId: string }) {
         disabled={isPending}
         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
       >
-        {isPending ? "Confirm in wallet…" : hasEnoughAllowance ? "Register as prophet" : "Approve & register as prophet"}
+        {isPending
+          ? "Confirm in wallet…"
+          : canPlay
+            ? "Play as Prophet"
+            : "Approve & Play as Prophet"}
       </button>
       {error && <p className="text-sm text-red-400">{error.message}</p>}
     </div>

@@ -64,6 +64,13 @@ export const gameplayEngineAbi = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [{ name: "_allowListProof", type: "bytes32[]" }],
+    name: "enterGame",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
 
 export const ticketEngineAbi = [
