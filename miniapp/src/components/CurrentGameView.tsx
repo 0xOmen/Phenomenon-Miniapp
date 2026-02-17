@@ -7,6 +7,8 @@ import {
   type ProphetItem,
   useMyProphetAndAcolyte,
 } from "@/hooks/useCurrentGame";
+import { useNeynarUsers } from "@/hooks/useNeynarUsers";
+import type { NeynarUserInfo } from "@/hooks/useNeynarUsers";
 import {
   PHENOMENON_ADDRESS,
   GAMEPLAY_ENGINE_ADDRESS,
@@ -282,6 +284,33 @@ function BuyTicketSection({
   );
 }
 
+function PlayerIdentity({
+  address,
+  user,
+}: {
+  address: string;
+  user: NeynarUserInfo | null | undefined;
+}) {
+  const short = address.slice(0, 8);
+  if (user?.username) {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="text-gray-200">{user.username}</span>
+        {user.pfp_url && (
+          <img
+            src={user.pfp_url}
+            alt=""
+            className="h-6 w-6 rounded-full object-cover"
+            width={24}
+            height={24}
+          />
+        )}
+      </span>
+    );
+  }
+  return <span className="font-mono text-gray-400">{short}</span>;
+}
+
 export function CurrentGameView({
   game,
   isLoading,
@@ -293,6 +322,8 @@ export function CurrentGameView({
 }) {
   const { address } = useAccount();
   const { prophet, acolyte } = useMyProphetAndAcolyte(game, address ?? undefined);
+  const prophetAddresses = game?.prophets?.items?.map((p) => p.playerAddress) ?? [];
+  const { data: neynarUsersMap } = useNeynarUsers(prophetAddresses);
 
   if (isLoading) {
     return <p className="text-gray-500">Loading current game…</p>;
@@ -319,6 +350,11 @@ export function CurrentGameView({
   const currentTurnIndex = game.currentProphetTurn;
   const currentTurnProphet = prophets.find((p) => p.prophetIndex === currentTurnIndex);
   const isMyTurn = prophet != null && prophet.prophetIndex === currentTurnIndex && prophet.isAlive;
+  const currentTurnUsername =
+    currentTurnProphet && neynarUsersMap?.[currentTurnProphet.playerAddress.toLowerCase()]?.username;
+  const acolyteProphet = acolyte && prophets.find((x) => x.prophetIndex === acolyte.prophetIndex);
+  const acolyteProphetUsername =
+    acolyteProphet && neynarUsersMap?.[acolyteProphet.playerAddress.toLowerCase()]?.username;
 
   return (
     <div className="space-y-4">
@@ -341,7 +377,11 @@ export function CurrentGameView({
                 <p className="text-gray-400">Connect a wallet to register as a prophet.</p>
               )}
               {address && prophet && (
-                <p className="text-green-400">You are registered as a prophet for this game.</p>
+                <p className="text-green-400">
+                  You are Prophet {prophet.prophetIndex}. Need{" "}
+                  {required != null ? Math.max(0, required - registered) : "—"} more prophets to
+                  register.
+                </p>
               )}
               {address && !prophet && (
                 <RegisterProphetButton gameId={game.id} />
@@ -373,7 +413,9 @@ export function CurrentGameView({
               {prophet.isAlive && !isMyTurn && (
                 <p className="text-sm text-gray-400">
                   {currentTurnProphet
-                    ? `Waiting for Prophet ${currentTurnIndex}'s turn.`
+                    ? currentTurnUsername
+                      ? `Waiting for @${currentTurnUsername}'s turn.`
+                      : `Waiting for Prophet ${currentTurnIndex}'s turn.`
                     : "Waiting for next turn."}
                 </p>
               )}
@@ -383,7 +425,8 @@ export function CurrentGameView({
             <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
               {acolyte ? (
                 <p className="text-sm text-gray-300">
-                  You hold {String(acolyte.ticketCount)} ticket(s) for Prophet {acolyte.prophetIndex}.
+                  You hold {String(acolyte.ticketCount)} ticket(s) for Prophet {acolyte.prophetIndex}
+                  {acolyteProphetUsername ? ` (@${acolyteProphetUsername})` : ""}.
                 </p>
               ) : (
                 <BuyTicketSection gameId={game.id} livingProphets={livingProphets} />
@@ -407,12 +450,27 @@ export function CurrentGameView({
         <ul className="space-y-1 text-sm">
           {prophets
             .sort((a, b) => a.prophetIndex - b.prophetIndex)
-            .map((p) => (
-              <li key={p.id} className="font-mono text-gray-300">
-                Prophet {p.prophetIndex}: {p.playerAddress.slice(0, 10)}… —{" "}
-                {p.isAlive ? "alive" : "out"} {!p.isFree && " (frozen)"}
-              </li>
-            ))}
+            .map((p) => {
+              const isCurrentTurn = p.prophetIndex === currentTurnIndex;
+              const userInfo = neynarUsersMap?.[p.playerAddress.toLowerCase()];
+              return (
+                <li
+                  key={p.id}
+                  className={`flex flex-wrap items-center justify-between gap-2 rounded px-2 py-1.5 ${
+                    isCurrentTurn ? "bg-blue-900/50 ring-1 ring-blue-500/50" : ""
+                  }`}
+                >
+                  <span className="text-gray-300">
+                    Prophet {p.prophetIndex}:{" "}
+                    <PlayerIdentity address={p.playerAddress} user={userInfo} />
+                  </span>
+                  <span className="text-gray-500">
+                    {p.isAlive ? "alive" : "out"}
+                    {!p.isFree && " (frozen)"}
+                  </span>
+                </li>
+              );
+            })}
         </ul>
       </div>
     </div>

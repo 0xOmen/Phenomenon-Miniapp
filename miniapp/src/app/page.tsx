@@ -17,8 +17,6 @@ export default function Home() {
     <>
       <Header />
       <main className="min-h-screen p-6 pb-20">
-        <p className="mb-6 text-gray-400">Become a Movement — Farcaster miniapp</p>
-
         {activeTab === "current" && (
           <section>
             <h2 className="mb-3 text-lg font-semibold text-white">Current Game</h2>
