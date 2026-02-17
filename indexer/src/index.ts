@@ -310,6 +310,28 @@ ponder.on("GameplayEngine:accusation", async ({ event, context }) => {
         prophetIndex: Number(currentProphetTurn),
         targetIndex: targetIdx,
         success: isSuccess,
+        targetIsAlive: event.args.targetIsAlive,
+        blockNumber: event.block.number,
+        transactionHash: event.transaction.hash,
+      })
+      .onConflictDoNothing();
+  }
+});
+
+ponder.on("GameplayEngine:forceMiracleTriggered", async ({ event, context }) => {
+  const games = await context.db.sql.query.game.findMany({
+    where: (t, { eq }) => eq(t.status, GAME_STATUS.started),
+  });
+  for (const g of games) {
+    await context.db
+      .insert(gameEvent)
+      .values({
+        id: `forceMiracleTriggered-${event.block.hash}-${event.log.logIndex}`,
+        gameId: g.id,
+        type: "forceMiracleTriggered",
+        prophetIndex: g.currentProphetTurn,
+        targetIndex: null,
+        success: true,
         blockNumber: event.block.number,
         transactionHash: event.transaction.hash,
       })

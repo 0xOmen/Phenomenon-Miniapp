@@ -40,6 +40,20 @@ export const phenomenonAbi = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "s_lastRoundTimestamp",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "s_maxInterval",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 export const gameplayEngineAbi = [
@@ -67,6 +81,13 @@ export const gameplayEngineAbi = [
   {
     inputs: [{ name: "_allowListProof", type: "bytes32[]" }],
     name: "enterGame",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "forceMiracle",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

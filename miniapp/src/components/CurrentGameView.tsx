@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import {
   type CurrentGame,
+  type GameEventItem,
   type ProphetItem,
   useMyProphetAndAcolyte,
 } from "@/hooks/useCurrentGame";
@@ -311,6 +312,131 @@ function PlayerIdentity({
   return <span className="font-mono text-gray-400">{short}</span>;
 }
 
+/** Events are ordered by blockNumber desc (most recent first). */
+function getForcedMiracleOutcome(
+  forceEvent: GameEventItem,
+  events: GameEventItem[]
+): boolean | null {
+  const i = events.findIndex((e) => e.id === forceEvent.id);
+  if (i < 0 || forceEvent.prophetIndex == null) return null;
+  for (let j = 0; j < i; j++) {
+    const e = events[j];
+    if (e.type === "miracleAttempted" && e.prophetIndex === forceEvent.prophetIndex) return e.success ?? null;
+  }
+  return null;
+}
+
+function eventToNarrative(
+  event: GameEventItem,
+  getName: (prophetIndex: number) => string,
+  eventsOrderedDesc?: GameEventItem[]
+): string | null {
+  const actor = event.prophetIndex != null ? getName(event.prophetIndex) : null;
+  const target = event.targetIndex != null ? getName(event.targetIndex) : null;
+  switch (event.type) {
+    case "prophetEnteredGame":
+      return actor ? `${actor} entered the game as a prophet.` : null;
+    case "prophetRegistered":
+      return actor ? `${actor} registered as a prophet.` : null;
+    case "gameStarted":
+      return "The game started.";
+    case "gameEnded":
+      return actor ? `The game ended. ${actor} won.` : "The game ended.";
+    case "gameReset":
+      return "A new game was reset.";
+    case "miracleAttempted":
+      if (actor == null) return null;
+      return event.success
+        ? `${actor} successfully performed a miracle.`
+        : `${actor} failed to perform a miracle and was eliminated.`;
+    case "smiteAttempted":
+      if (actor == null || target == null) return null;
+      return event.success
+        ? `${actor} successfully smote ${target} and ${target} was eliminated.`
+        : `${actor} failed to smite ${target} and was sent to jail.`;
+    case "accusation":
+      if (actor == null || target == null) return null;
+      if (!event.success) return `${actor} failed to accuse ${target} of blasphemy and was sent to jail.`;
+      if (event.targetIsAlive === true) return `${actor} successfully accused ${target} of blasphemy and sent ${target} to jail.`;
+      if (event.targetIsAlive === false) return `${actor} successfully accused ${target} of blasphemy and ${target} was executed.`;
+      return `${actor} successfully accused ${target} of blasphemy and ${target} was punished.`;
+    case "forceMiracleTriggered": {
+      if (!actor) return "A miracle was forced.";
+      const outcome = eventsOrderedDesc ? getForcedMiracleOutcome(event, eventsOrderedDesc) : null;
+      if (outcome === true) return `${actor}'s turn was forced; a miracle was triggered. ${actor} succeeded (no change or freed from jail).`;
+      if (outcome === false) return `${actor}'s turn was forced; a miracle was triggered. ${actor} failed and was eliminated.`;
+      return `${actor}'s turn was forced; a miracle was triggered.`;
+    }
+    case "gainReligion":
+      return target ? `Tickets were bought for ${target}.` : null;
+    default:
+      return null;
+  }
+}
+
+function NarrativeFeed({
+  events,
+  prophets,
+  neynarUsersMap,
+}: {
+  events: GameEventItem[];
+  prophets: ProphetItem[];
+  neynarUsersMap: Record<string, NeynarUserInfo> | undefined;
+}) {
+  const getName = (prophetIndex: number) => {
+    const p = prophets.find((x) => x.prophetIndex === prophetIndex);
+    if (!p) return `Prophet ${prophetIndex}`;
+    const u = neynarUsersMap?.[p.playerAddress.toLowerCase()];
+    return u?.username ? `@${u.username}` : `Prophet ${prophetIndex}`;
+  };
+  const narratives = events
+    .map((ev) => ({ ev, text: eventToNarrative(ev, getName, events) }))
+    .filter((x): x is { ev: GameEventItem; text: string } => x.text != null);
+  if (narratives.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-gray-800 p-3">
+      <p className="mb-2 text-xs font-medium text-gray-500">Action log</p>
+      <ul className="space-y-1.5 text-sm text-gray-300">
+        {narratives.map(({ ev, text }) => (
+          <li key={ev.id}>{text}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ForceTurnButton() {
+  const { data: lastRound } = useReadContract({
+    address: PHENOMENON_ADDRESS,
+    abi: phenomenonAbi,
+    functionName: "s_lastRoundTimestamp",
+  });
+  const { data: maxInterval } = useReadContract({
+    address: PHENOMENON_ADDRESS,
+    abi: phenomenonAbi,
+    functionName: "s_maxInterval",
+  });
+  const { writeContractAsync, isPending, error } = useWriteContract();
+  const now = Math.floor(Date.now() / 1000);
+  const deadline =
+    lastRound != null && maxInterval != null ? Number(lastRound) + Number(maxInterval) : 0;
+  const canForce = deadline > 0 && now >= deadline;
+  if (!canForce) return null;
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => writeContractAsync({ address: GAMEPLAY_ENGINE_ADDRESS, abi: gameplayEngineAbi, functionName: "forceMiracle" })}
+        disabled={isPending}
+        className="rounded bg-amber-700 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+      >
+        {isPending ? "Confirm…" : "Force turn"}
+      </button>
+      {error && <span className="ml-2 text-xs text-red-400">{error.message}</span>}
+    </div>
+  );
+}
+
 export function CurrentGameView({
   game,
   isLoading,
@@ -355,6 +481,21 @@ export function CurrentGameView({
   const acolyteProphet = acolyte && prophets.find((x) => x.prophetIndex === acolyte.prophetIndex);
   const acolyteProphetUsername =
     acolyteProphet && neynarUsersMap?.[acolyteProphet.playerAddress.toLowerCase()]?.username;
+
+  const events = game.events?.items ?? [];
+  const [selectedProphetIndex, setSelectedProphetIndex] = useState<number | null>(null);
+  const getName = (prophetIndex: number) => {
+    const p = prophets.find((x) => x.prophetIndex === prophetIndex);
+    if (!p) return `Prophet ${prophetIndex}`;
+    const u = neynarUsersMap?.[p.playerAddress.toLowerCase()];
+    return u?.username ? `@${u.username}` : `Prophet ${prophetIndex}`;
+  };
+  const eventsForProphet = (idx: number) =>
+    events.filter((e) => e.prophetIndex === idx || (e.type === "accusation" && e.targetIndex === idx));
+  const prophetNarratives = (idx: number) =>
+    eventsForProphet(idx)
+      .map((ev) => eventToNarrative(ev, getName, events))
+      .filter((t): t is string => t != null);
 
   return (
     <div className="space-y-4">
@@ -452,27 +593,46 @@ export function CurrentGameView({
             .sort((a, b) => a.prophetIndex - b.prophetIndex)
             .map((p) => {
               const isCurrentTurn = p.prophetIndex === currentTurnIndex;
+              const isSelected = selectedProphetIndex === p.prophetIndex;
               const userInfo = neynarUsersMap?.[p.playerAddress.toLowerCase()];
+              const narratives = prophetNarratives(p.prophetIndex);
               return (
-                <li
-                  key={p.id}
-                  className={`flex flex-wrap items-center justify-between gap-2 rounded px-2 py-1.5 ${
-                    isCurrentTurn ? "bg-blue-900/50 ring-1 ring-blue-500/50" : ""
-                  }`}
-                >
-                  <span className="text-gray-300">
-                    Prophet {p.prophetIndex}:{" "}
-                    <PlayerIdentity address={p.playerAddress} user={userInfo} />
-                  </span>
-                  <span className="text-gray-500">
-                    {p.isAlive ? "alive" : "out"}
-                    {!p.isFree && " (frozen)"}
-                  </span>
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProphetIndex(isSelected ? null : p.prophetIndex)}
+                    className={`flex w-full flex-wrap items-center justify-between gap-2 rounded px-2 py-1.5 text-left hover:bg-gray-800/50 ${
+                      isCurrentTurn ? "bg-blue-900/50 ring-1 ring-blue-500/50" : ""
+                    } ${isSelected ? "ring-1 ring-gray-500" : ""}`}
+                  >
+                    <span className="text-gray-300">
+                      Prophet {p.prophetIndex}:{" "}
+                      <PlayerIdentity address={p.playerAddress} user={userInfo} />
+                    </span>
+                    <span className="text-gray-500">
+                      {p.isAlive ? "alive" : "out"}
+                      {!p.isFree && " (frozen)"}
+                      {isSelected ? " ▼" : " ▶"}
+                    </span>
+                  </button>
+                  {isSelected && narratives.length > 0 && (
+                    <div className="mt-1 border-l-2 border-gray-700 pl-3 pb-2">
+                      <p className="mb-1 text-xs text-gray-500">Actions by this prophet</p>
+                      <ul className="space-y-0.5 text-xs text-gray-400">
+                        {narratives.map((text, i) => (
+                          <li key={i}>{text}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {isCurrentTurn && started && <ForceTurnButton />}
                 </li>
               );
             })}
         </ul>
       </div>
+
+      <NarrativeFeed events={events} prophets={prophets} neynarUsersMap={neynarUsersMap} />
     </div>
   );
 }

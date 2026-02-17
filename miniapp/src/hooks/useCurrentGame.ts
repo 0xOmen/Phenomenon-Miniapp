@@ -19,6 +19,17 @@ export type AcolyteItem = {
   ticketCount: string;
 };
 
+export type GameEventItem = {
+  id: string;
+  type: string;
+  prophetIndex: number | null;
+  targetIndex: number | null;
+  success: boolean | null;
+  targetIsAlive?: boolean | null;
+  blockNumber: string;
+  transactionHash: string;
+};
+
 export type CurrentGame = {
   id: string;
   gameNumber: string | number;
@@ -28,6 +39,7 @@ export type CurrentGame = {
   prophetsRequired: number | null;
   prophets: { items: ProphetItem[] };
   acolytes: { items: AcolyteItem[] };
+  events?: { items: GameEventItem[] };
   winnerProphetIndex?: number | null;
 };
 
@@ -56,6 +68,18 @@ const CURRENT_GAME_QUERY = `
           ownerAddress
           prophetIndex
           ticketCount
+        }
+      }
+      events(limit: 100, orderBy: "blockNumber", orderDirection: "desc") {
+        items {
+          id
+          type
+          prophetIndex
+          targetIndex
+          success
+          targetIsAlive
+          blockNumber
+          transactionHash
         }
       }
       winnerProphetIndex
