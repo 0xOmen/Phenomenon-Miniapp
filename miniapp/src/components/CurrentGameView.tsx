@@ -168,7 +168,7 @@ function ProphetTurnActions({
           <button
             type="button"
             onClick={run}
-            disabled={isPending || (target == null && action !== "miracle")}
+            disabled={isPending || target == null}
             className="rounded bg-blue-600 px-2 py-1 text-sm text-white disabled:opacity-50"
           >
             Submit
