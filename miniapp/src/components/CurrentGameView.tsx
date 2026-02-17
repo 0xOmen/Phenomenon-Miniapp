@@ -41,7 +41,7 @@ function RegisterProphetButton({ gameId }: { gameId: string }) {
   const handleRegister = async () => {
     if (!address) return;
     try {
-      if (!hasEnoughAllowance && fee > 0n) {
+      if (!hasEnoughAllowance && fee > BigInt(0)) {
         await writeContractAsync({
           address: TEST_TOKEN_ADDRESS,
           abi: erc20Abi,
@@ -220,7 +220,7 @@ function BuyTicketSection({
   const buy = async () => {
     if (prophetIndex == null) return;
     const num = BigInt(amount || "1");
-    if (num < 1n) return;
+    if (num < BigInt(1)) return;
     await writeContractAsync({
       address: TICKET_ENGINE_ADDRESS,
       abi: ticketEngineAbi,
