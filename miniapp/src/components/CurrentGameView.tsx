@@ -450,6 +450,7 @@ export function CurrentGameView({
   const { prophet, acolyte } = useMyProphetAndAcolyte(game, address ?? undefined);
   const prophetAddresses = game?.prophets?.items?.map((p) => p.playerAddress) ?? [];
   const { data: neynarUsersMap } = useNeynarUsers(prophetAddresses);
+  const [selectedProphetIndex, setSelectedProphetIndex] = useState<number | null>(null);
 
   if (isLoading) {
     return <p className="text-gray-500">Loading current game…</p>;
@@ -483,7 +484,6 @@ export function CurrentGameView({
     acolyteProphet && neynarUsersMap?.[acolyteProphet.playerAddress.toLowerCase()]?.username;
 
   const events = game.events?.items ?? [];
-  const [selectedProphetIndex, setSelectedProphetIndex] = useState<number | null>(null);
   const getName = (prophetIndex: number) => {
     const p = prophets.find((x) => x.prophetIndex === prophetIndex);
     if (!p) return `Prophet ${prophetIndex}`;
