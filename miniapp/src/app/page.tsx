@@ -1,64 +1,71 @@
 "use client";
 
+import { useState } from "react";
 import { usePonderGames } from "@/hooks/usePonderGames";
+import { useCurrentGame } from "@/hooks/useCurrentGame";
 import { Header } from "@/components/Header";
+import { FooterTabs, type TabId } from "@/components/FooterTabs";
+import { CurrentGameView } from "@/components/CurrentGameView";
 
 export default function Home() {
-  const { data: games, isLoading, error, isError } = usePonderGames();
+  const [activeTab, setActiveTab] = useState<TabId>("current");
+  const { data: games, isLoading: gamesLoading, error: gamesError } = usePonderGames();
+  const currentGameId = games && games.length > 0 ? games[0].id : null;
+  const { data: currentGame, isLoading: currentLoading, error: currentError } = useCurrentGame(currentGameId);
 
   return (
     <>
       <Header />
-      <main className="min-h-screen p-6">
-        <p className="text-gray-400 mb-6">Become a Movement — Farcaster miniapp</p>
+      <main className="min-h-screen p-6 pb-20">
+        <p className="mb-6 text-gray-400">Become a Movement — Farcaster miniapp</p>
 
-        <section>
-          <h2 className="text-lg font-semibold mb-2 text-white">Current game</h2>
-          {isLoading && !isError && <p className="text-gray-500">Loading...</p>}
-          {isError && (
-            <p className="text-red-400">
-              Could not load games. Check that the indexer is running and NEXT_PUBLIC_PONDER_GRAPHQL_URL is set.
-            </p>
-          )}
-          {!isLoading && !error && games && games.length === 0 && (
-            <p className="text-gray-500">No games yet. Start the indexer and ensure it has synced.</p>
-          )}
-          {games && games.length > 0 && (
-            <div className="space-y-3 text-sm">
-              {games.slice(0, 1).map((g) => {
-                const required = g.prophetsRequired ?? null;
-                const needed = required != null ? Math.max(0, required - g.prophetsRemaining) : null;
-                const prophets = g.prophets?.items ?? [];
-                return (
-                  <div key={g.id} className="space-y-2 rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                    <p className="text-gray-200">
-                      Game #{String(g.gameNumber)} — {g.status} — turn: {g.currentProphetTurn} — prophets
-                      registered: {g.prophetsRemaining}
-                    </p>
-                    <p className="text-gray-400">
-                      Prophets needed to start: {needed != null ? needed : "—"}
-                    </p>
-                    {prophets.length > 0 && (
-                      <div>
-                        <p className="mb-1 text-gray-400">Prophet addresses:</p>
-                        <ul className="list-inside list-disc space-y-0.5 font-mono text-gray-300">
-                          {prophets
-                            .sort((a, b) => a.prophetIndex - b.prophetIndex)
-                            .map((p) => (
-                              <li key={`${g.id}-${p.prophetIndex}`}>
-                                {p.playerAddress}
-                              </li>
-                            ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+        {activeTab === "current" && (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-white">Current Game</h2>
+            <CurrentGameView
+              game={currentGame}
+              isLoading={gamesLoading || currentLoading}
+              error={gamesError ?? currentError ?? null}
+            />
+          </section>
+        )}
+
+        {activeTab === "prior" && (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-white">Prior Games</h2>
+            {gamesLoading && <p className="text-gray-500">Loading…</p>}
+            {gamesError && (
+              <p className="text-red-400">Could not load games.</p>
+            )}
+            {!gamesLoading && !gamesError && games && (
+              <ul className="space-y-2">
+                {games.slice(1, 21).map((g) => (
+                  <li
+                    key={g.id}
+                    className="rounded-lg border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-300"
+                  >
+                    Game #{String(g.gameNumber)} — {g.status}
+                  </li>
+                ))}
+                {games.length <= 1 && (
+                  <li className="text-gray-500">No prior games.</li>
+                )}
+              </ul>
+            )}
+            {!gamesLoading && (!games || games.length === 0) && (
+              <p className="text-gray-500">No games yet.</p>
+            )}
+          </section>
+        )}
+
+        {activeTab === "stats" && (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-white">Stats</h2>
+            <p className="text-gray-500">Stats view coming soon.</p>
+          </section>
+        )}
       </main>
+      <FooterTabs activeTab={activeTab} onTabChange={setActiveTab} />
     </>
   );
 }
