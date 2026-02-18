@@ -131,6 +131,11 @@ function ProphetTurnActions({
   return (
     <div className="space-y-3">
       <p className="text-sm text-green-400">Your turn.</p>
+      {isPending && (
+        <p className="text-sm text-amber-400">
+          Transaction pending… Waiting for confirmation and Chainlink fulfillment. Actions are disabled until the round updates.
+        </p>
+      )}
       {!action && (
         <div className="flex flex-wrap gap-2">
           <button
@@ -635,10 +640,11 @@ export function CurrentGameView({
                           High Priest
                         </span>
                       ) : (
-                        <>
-                          {p.isAlive ? "alive" : "out"}
-                          {!p.isFree && " (frozen)"}
-                        </>
+                        p.isAlive
+                          ? p.isFree
+                            ? "Alive"
+                            : "Jailed"
+                          : "Eliminated"
                       )}
                       {isSelected ? " ▼" : " ▶"}
                     </span>

@@ -145,6 +145,25 @@ ponder.on("GameplayEngine:gameStarted", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
+// ---- Phenomenon: prophet state (freed from jail, etc.) ----
+
+ponder.on("Phenomenon:prophetUpdated", async ({ event, context }) => {
+  const { gameNumber, prophet: prophetAddress, isAlive, isFree } = event.args;
+  const gameId = String(gameNumber);
+  const prophetsForGame = await context.db.sql.query.prophet.findMany({
+    where: (t, { eq }) => eq(t.gameId, gameId),
+  });
+  const match = prophetsForGame.find(
+    (p) => p.playerAddress?.toLowerCase() === (prophetAddress as string).toLowerCase()
+  );
+  if (match) {
+    await context.db.update(prophet, { id: match.id }).set({
+      isAlive: Boolean(isAlive),
+      isFree: Boolean(isFree),
+    });
+  }
+});
+
 // ---- Phenomenon: turn, ended, reset ----
 
 ponder.on("Phenomenon:currentTurn", async ({ event, context }) => {
