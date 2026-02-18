@@ -1,5 +1,5 @@
 import { ponder } from "ponder:registry";
-import { game, prophet, acolyte, gameEvent, config } from "ponder:schema";
+import { game, prophet, acolyte, gameEvent, config, ticketClaim } from "ponder:schema";
 
 const GAME_STATUS = {
   open: "open",
@@ -179,11 +179,19 @@ ponder.on("Phenomenon:currentTurn", async ({ event, context }) => {
 ponder.on("Phenomenon:gameEnded", async ({ event, context }) => {
   const { gameNumber, currentProphetTurn } = event.args;
   const gameId = String(gameNumber);
+  const gameRow = await context.db.find(game, { id: gameId });
+  const winnerIdx = Number(currentProphetTurn);
+  const acolytesForWinner = await context.db.sql.query.acolyte.findMany({
+    where: (t, { eq, and }) => and(eq(t.gameId, gameId), eq(t.prophetIndex, winnerIdx)),
+  });
+  const winningTickets = acolytesForWinner.reduce((sum, a) => sum + a.ticketCount, 0n);
 
   await context.db.update(game, { id: gameId }).set({
     status: GAME_STATUS.ended,
     endBlock: event.block.number,
-    winnerProphetIndex: Number(currentProphetTurn),
+    winnerProphetIndex: winnerIdx,
+    endTotalTickets: gameRow?.totalTickets ?? 0n,
+    winningTicketsAtEnd: winningTickets,
   });
 
   await context.db
@@ -419,6 +427,13 @@ ponder.on("TicketEngine:gainReligion", async ({ event, context }) => {
     });
   }
 
+  const gameRow = await context.db.find(game, { id: gameId });
+  if (gameRow) {
+    await context.db.update(game, { id: gameId }).set({
+      totalTickets: gameRow.totalTickets + numTicketsBought,
+    });
+  }
+
   await context.db
     .insert(gameEvent)
     .values({
@@ -461,6 +476,12 @@ ponder.on("TicketEngine:religionLost", async ({ event, context }) => {
     });
   }
 
+  const gameRow = await context.db.find(game, { id: gameId });
+  if (gameRow) {
+    const newTotal = gameRow.totalTickets > numTicketsSold ? gameRow.totalTickets - numTicketsSold : 0n;
+    await context.db.update(game, { id: gameId }).set({ totalTickets: newTotal });
+  }
+
   await context.db
     .insert(gameEvent)
     .values({
@@ -479,6 +500,16 @@ ponder.on("TicketEngine:religionLost", async ({ event, context }) => {
 ponder.on("TicketEngine:ticketsClaimed", async ({ event, context }) => {
   const { player, tokensSent, gameNumber } = event.args;
   const gameId = String(gameNumber);
+  const claimId = `${gameId}-${(player as string).toLowerCase()}`;
+  await context.db
+    .insert(ticketClaim)
+    .values({
+      id: claimId,
+      gameId,
+      ownerAddress: player,
+      tokensClaimed: tokensSent,
+    })
+    .onConflictDoNothing();
   await context.db
     .insert(gameEvent)
     .values({
@@ -488,6 +519,7 @@ ponder.on("TicketEngine:ticketsClaimed", async ({ event, context }) => {
       prophetIndex: null,
       targetIndex: null,
       success: true,
+      actorAddress: player,
       blockNumber: event.block.number,
       transactionHash: event.transaction.hash,
     })

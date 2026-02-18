@@ -5,7 +5,7 @@ import { PONDER_GRAPHQL_URL } from "@/lib/contracts";
 
 const GAMES_QUERY = `
   query Games {
-    games(limit: 10, orderBy: "gameNumber", orderDirection: "desc") {
+    games(limit: 50, orderBy: "gameNumber", orderDirection: "desc") {
       items {
         id
         gameNumber
@@ -15,6 +15,8 @@ const GAMES_QUERY = `
         prophetsRequired
         totalTickets
         tokenBalance
+        endTotalTickets
+        winnerProphetIndex
         prophets(limit: 20) {
           items {
             prophetIndex
@@ -40,6 +42,8 @@ export type PonderGame = {
   prophetsRequired?: number | null;
   totalTickets: string;
   tokenBalance: string;
+  endTotalTickets?: string | null;
+  winnerProphetIndex?: number | null;
   prophets?: { items: PonderProphet[] };
 };
 

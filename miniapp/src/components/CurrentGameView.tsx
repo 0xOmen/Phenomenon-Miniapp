@@ -670,6 +670,14 @@ export function CurrentGameView({
               const isWinner = ended && game.winnerProphetIndex != null && p.prophetIndex === game.winnerProphetIndex;
               const isSelected = selectedProphetIndex === p.prophetIndex;
               const userInfo = neynarUsersMap?.[p.playerAddress.toLowerCase()];
+              const totalTickets = BigInt(game.totalTickets ?? 0);
+              const supremacyPct =
+                totalTickets > BigInt(0)
+                  ? Math.round(
+                      (Number((BigInt(p.accolites ?? 0) + BigInt(p.highPriests ?? 0)) * BigInt(10000)) /
+                        Number(totalTickets))
+                    ) / 100
+                  : 0;
               const narratives = prophetNarratives(p.prophetIndex);
               const isHighPriest = p.role === "highPriest";
               const isEliminated = !p.isAlive;
@@ -701,6 +709,9 @@ export function CurrentGameView({
                       Prophet {p.prophetIndex}: <PlayerIdentity address={p.playerAddress} user={userInfo} />
                     </span>
                     <span className={`flex items-center gap-2 ${isWinner ? "text-green-400 font-medium" : isHighPriest ? "text-gray-500" : isEliminated ? "text-red-400" : isJailed ? "text-yellow-400" : "text-gray-500"}`}>
+                      <span className="rounded bg-gray-700/80 px-1.5 py-0.5 text-xs text-gray-300">
+                        {supremacyPct}%
+                      </span>
                       {isHighPriest ? (
                         <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-xs font-medium text-amber-200">
                           High Priest

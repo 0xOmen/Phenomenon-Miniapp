@@ -25,6 +25,8 @@ export const game = onchainTable(
     startBlock: t.bigint(),
     endBlock: t.bigint(),
     winnerProphetIndex: t.integer(), // set when ended
+    endTotalTickets: t.bigint(), // snapshot at game end for prior-game stats
+    winningTicketsAtEnd: t.bigint(), // tickets for winner at game end (for prior-game %)
   }),
   (table) => ({
     gameNumberIdx: index().on(table.gameNumber),
@@ -68,6 +70,21 @@ export const acolyte = onchainTable(
   })
 );
 
+// Ticket claims (when winner claims winnings)
+export const ticketClaim = onchainTable(
+  "ticket_claim",
+  (t) => ({
+    id: t.text().primaryKey(), // `${gameId}-${ownerAddress}`
+    gameId: t.text().notNull(),
+    ownerAddress: t.hex().notNull(),
+    tokensClaimed: t.bigint().notNull(),
+  }),
+  (table) => ({
+    gameIdIdx: index().on(table.gameId),
+    ownerAddressIdx: index().on(table.ownerAddress),
+  })
+);
+
 // Game events for "last action" and history
 export const gameEvent = onchainTable(
   "game_event",
@@ -93,6 +110,11 @@ export const gameRelations = relations(game, ({ many }) => ({
   prophets: many(prophet),
   acolytes: many(acolyte),
   events: many(gameEvent),
+  ticketClaims: many(ticketClaim),
+}));
+
+export const ticketClaimRelations = relations(ticketClaim, ({ one }) => ({
+  game: one(game, { fields: [ticketClaim.gameId], references: [game.id] }),
 }));
 
 export const prophetRelations = relations(prophet, ({ one }) => ({

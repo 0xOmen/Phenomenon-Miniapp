@@ -10,6 +10,8 @@ export type ProphetItem = {
   isAlive: boolean;
   isFree: boolean;
   role: string;
+  accolites?: string | null;
+  highPriests?: string | null;
 };
 
 export type AcolyteItem = {
@@ -38,6 +40,7 @@ export type CurrentGame = {
   currentProphetTurn: number;
   prophetsRemaining: number;
   prophetsRequired: number | null;
+  totalTickets?: string | null;
   prophets: { items: ProphetItem[] };
   acolytes: { items: AcolyteItem[] };
   events?: { items: GameEventItem[] };
@@ -53,6 +56,7 @@ const CURRENT_GAME_QUERY = `
       currentProphetTurn
       prophetsRemaining
       prophetsRequired
+      totalTickets
       prophets(limit: 20) {
         items {
           id
@@ -61,6 +65,8 @@ const CURRENT_GAME_QUERY = `
           isAlive
           isFree
           role
+          accolites
+          highPriests
         }
       }
       acolytes(limit: 500) {
