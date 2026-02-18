@@ -326,6 +326,34 @@ function getForcedMiracleOutcome(
   return null;
 }
 
+/** Display name for narratives: username (no @) or 0x + first 6 hex chars. */
+function getDisplayName(
+  prophetIndex: number,
+  prophets: ProphetItem[],
+  neynarUsersMap: Record<string, NeynarUserInfo> | undefined
+): string {
+  const p = prophets.find((x) => x.prophetIndex === prophetIndex);
+  if (!p) return `Prophet ${prophetIndex}`;
+  const u = neynarUsersMap?.[p.playerAddress.toLowerCase()];
+  return u?.username ?? p.playerAddress.slice(0, 8);
+}
+
+function getEventEmoji(type: string): string {
+  switch (type) {
+    case "prophetEnteredGame": return "👤";
+    case "prophetRegistered": return "📝";
+    case "gameStarted": return "🚀";
+    case "gameEnded": return "🏁";
+    case "gameReset": return "🔄";
+    case "miracleAttempted": return "✨";
+    case "smiteAttempted": return "⚡";
+    case "accusation": return "📢";
+    case "forceMiracleTriggered": return "⏩";
+    case "gainReligion": return "🎫";
+    default: return "•";
+  }
+}
+
 function eventToNarrative(
   event: GameEventItem,
   getName: (prophetIndex: number) => string,
@@ -383,12 +411,7 @@ function NarrativeFeed({
   prophets: ProphetItem[];
   neynarUsersMap: Record<string, NeynarUserInfo> | undefined;
 }) {
-  const getName = (prophetIndex: number) => {
-    const p = prophets.find((x) => x.prophetIndex === prophetIndex);
-    if (!p) return `Prophet ${prophetIndex}`;
-    const u = neynarUsersMap?.[p.playerAddress.toLowerCase()];
-    return u?.username ? `@${u.username}` : `Prophet ${prophetIndex}`;
-  };
+  const getName = (prophetIndex: number) => getDisplayName(prophetIndex, prophets, neynarUsersMap);
   const narratives = events
     .map((ev) => ({ ev, text: eventToNarrative(ev, getName, events) }))
     .filter((x): x is { ev: GameEventItem; text: string } => x.text != null);
@@ -398,7 +421,7 @@ function NarrativeFeed({
       <p className="mb-2 text-xs font-medium text-gray-500">Action log</p>
       <ul className="space-y-1.5 text-sm text-gray-300">
         {narratives.map(({ ev, text }) => (
-          <li key={ev.id}>{text}</li>
+          <li key={ev.id}>{getEventEmoji(ev.type)} {text}</li>
         ))}
       </ul>
     </div>
@@ -484,18 +507,15 @@ export function CurrentGameView({
     acolyteProphet && neynarUsersMap?.[acolyteProphet.playerAddress.toLowerCase()]?.username;
 
   const events = game.events?.items ?? [];
-  const getName = (prophetIndex: number) => {
-    const p = prophets.find((x) => x.prophetIndex === prophetIndex);
-    if (!p) return `Prophet ${prophetIndex}`;
-    const u = neynarUsersMap?.[p.playerAddress.toLowerCase()];
-    return u?.username ? `@${u.username}` : `Prophet ${prophetIndex}`;
-  };
+  const getName = (prophetIndex: number) => getDisplayName(prophetIndex, prophets, neynarUsersMap);
   const eventsForProphet = (idx: number) =>
     events.filter((e) => e.prophetIndex === idx || (e.type === "accusation" && e.targetIndex === idx));
+  const DROPDOWN_SKIP_TYPES = ["prophetEnteredGame", "prophetRegistered"];
   const prophetNarratives = (idx: number) =>
     eventsForProphet(idx)
-      .map((ev) => eventToNarrative(ev, getName, events))
-      .filter((t): t is string => t != null);
+      .filter((e) => !DROPDOWN_SKIP_TYPES.includes(e.type))
+      .map((ev) => ({ ev, text: eventToNarrative(ev, getName, events) }))
+      .filter((x): x is { ev: GameEventItem; text: string } => x.text != null);
 
   return (
     <div className="space-y-4">
@@ -555,7 +575,7 @@ export function CurrentGameView({
                 <p className="text-sm text-gray-400">
                   {currentTurnProphet
                     ? currentTurnUsername
-                      ? `Waiting for @${currentTurnUsername}'s turn.`
+                      ? `Waiting for ${currentTurnUsername}'s turn.`
                       : `Waiting for Prophet ${currentTurnIndex}'s turn.`
                     : "Waiting for next turn."}
                 </p>
@@ -567,7 +587,7 @@ export function CurrentGameView({
               {acolyte ? (
                 <p className="text-sm text-gray-300">
                   You hold {String(acolyte.ticketCount)} ticket(s) for Prophet {acolyte.prophetIndex}
-                  {acolyteProphetUsername ? ` (@${acolyteProphetUsername})` : ""}.
+                  {acolyteProphetUsername ? ` (${acolyteProphetUsername})` : ""}.
                 </p>
               ) : (
                 <BuyTicketSection gameId={game.id} livingProphets={livingProphets} />
@@ -596,6 +616,7 @@ export function CurrentGameView({
               const isSelected = selectedProphetIndex === p.prophetIndex;
               const userInfo = neynarUsersMap?.[p.playerAddress.toLowerCase()];
               const narratives = prophetNarratives(p.prophetIndex);
+              const isHighPriest = p.role === "highPriest";
               return (
                 <li key={p.id}>
                   <button
@@ -606,17 +627,19 @@ export function CurrentGameView({
                     } ${isSelected ? "ring-1 ring-gray-500" : ""}`}
                   >
                     <span className="text-gray-300">
-                      Prophet {p.prophetIndex}
-                      {p.role === "highPriest" && (
-                        <span className="ml-1.5 rounded bg-amber-900/60 px-1.5 py-0.5 text-xs font-medium text-amber-200">
+                      Prophet {p.prophetIndex}: <PlayerIdentity address={p.playerAddress} user={userInfo} />
+                    </span>
+                    <span className="flex items-center gap-2 text-gray-500">
+                      {isHighPriest ? (
+                        <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-xs font-medium text-amber-200">
                           High Priest
                         </span>
+                      ) : (
+                        <>
+                          {p.isAlive ? "alive" : "out"}
+                          {!p.isFree && " (frozen)"}
+                        </>
                       )}
-                      : <PlayerIdentity address={p.playerAddress} user={userInfo} />
-                    </span>
-                    <span className="text-gray-500">
-                      {p.isAlive ? "alive" : "out"}
-                      {!p.isFree && " (frozen)"}
                       {isSelected ? " ▼" : " ▶"}
                     </span>
                   </button>
@@ -624,8 +647,8 @@ export function CurrentGameView({
                     <div className="mt-1 border-l-2 border-gray-700 pl-3 pb-2">
                       <p className="mb-1 text-xs text-gray-500">Actions by this prophet</p>
                       <ul className="space-y-0.5 text-xs text-gray-400">
-                        {narratives.map((text, i) => (
-                          <li key={i}>{text}</li>
+                        {narratives.map(({ ev, text }, i) => (
+                          <li key={i}>{getEventEmoji(ev.type)} {text}</li>
                         ))}
                       </ul>
                     </div>
