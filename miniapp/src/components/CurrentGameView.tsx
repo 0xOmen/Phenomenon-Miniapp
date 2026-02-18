@@ -482,13 +482,20 @@ function ForceTurnButton() {
   );
 }
 
-function StartNewGameButton() {
+function StartNewGameButton({ numberOfProphets }: { numberOfProphets: number }) {
   const { writeContractAsync, isPending, error } = useWriteContract();
   return (
     <div>
       <button
         type="button"
-        onClick={() => writeContractAsync({ address: PHENOMENON_ADDRESS, abi: phenomenonAbi, functionName: "reset" })}
+        onClick={() =>
+          writeContractAsync({
+            address: PHENOMENON_ADDRESS,
+            abi: phenomenonAbi,
+            functionName: "reset",
+            args: [numberOfProphets],
+          })
+        }
         disabled={isPending}
         className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50"
       >
@@ -548,7 +555,12 @@ export function CurrentGameView({
   const events = game.events?.items ?? [];
   const getName = (prophetIndex: number) => getDisplayName(prophetIndex, prophets, neynarUsersMap);
   const eventsForProphet = (idx: number) =>
-    events.filter((e) => e.prophetIndex === idx || (e.type === "accusation" && e.targetIndex === idx));
+    events.filter(
+      (e) =>
+        e.prophetIndex === idx ||
+        (e.type === "accusation" && e.targetIndex === idx) ||
+        (e.type === "smiteAttempted" && e.targetIndex === idx)
+    );
   const DROPDOWN_SKIP_TYPES = ["prophetEnteredGame", "prophetRegistered"];
   const prophetNarratives = (idx: number) =>
     eventsForProphet(idx)
@@ -644,7 +656,7 @@ export function CurrentGameView({
               <> Winner: Prophet {game.winnerProphetIndex}</>
             )}
           </p>
-          <StartNewGameButton />
+          <StartNewGameButton numberOfProphets={required ?? 2} />
         </div>
       )}
 

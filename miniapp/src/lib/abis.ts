@@ -55,10 +55,19 @@ export const phenomenonAbi = [
     type: "function",
   },
   {
-    inputs: [],
+    inputs: [
+      { name: "_numberOfPlayers", type: "uint16" },
+    ],
     name: "reset",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "s_numberOfProphets",
+    outputs: [{ name: "", type: "uint16" }],
+    stateMutability: "view",
     type: "function",
   },
 ] as const;
