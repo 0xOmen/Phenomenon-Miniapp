@@ -482,6 +482,23 @@ function ForceTurnButton() {
   );
 }
 
+function StartNewGameButton() {
+  const { writeContractAsync, isPending, error } = useWriteContract();
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => writeContractAsync({ address: PHENOMENON_ADDRESS, abi: phenomenonAbi, functionName: "reset" })}
+        disabled={isPending}
+        className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50"
+      >
+        {isPending ? "Confirm in wallet…" : "Start New Game"}
+      </button>
+      {error && <p className="mt-2 text-sm text-red-400">{error.message}</p>}
+    </div>
+  );
+}
+
 export function CurrentGameView({
   game,
   isLoading,
@@ -620,12 +637,15 @@ export function CurrentGameView({
       )}
 
       {ended && (
-        <p className="text-gray-400">
-          Game ended.
-          {game.winnerProphetIndex != null && (
-            <> Winner: Prophet {game.winnerProphetIndex}</>
-          )}
-        </p>
+        <div className="space-y-3">
+          <p className="text-gray-400">
+            Game ended.
+            {game.winnerProphetIndex != null && (
+              <> Winner: Prophet {game.winnerProphetIndex}</>
+            )}
+          </p>
+          <StartNewGameButton />
+        </div>
       )}
 
       <div className="rounded-lg border border-gray-800 p-3">
@@ -635,33 +655,46 @@ export function CurrentGameView({
             .sort((a, b) => a.prophetIndex - b.prophetIndex)
             .map((p) => {
               const isCurrentTurn = p.prophetIndex === currentTurnIndex;
+              const isWinner = ended && game.winnerProphetIndex != null && p.prophetIndex === game.winnerProphetIndex;
               const isSelected = selectedProphetIndex === p.prophetIndex;
               const userInfo = neynarUsersMap?.[p.playerAddress.toLowerCase()];
               const narratives = prophetNarratives(p.prophetIndex);
               const isHighPriest = p.role === "highPriest";
+              const isEliminated = !p.isAlive;
+              const isJailed = p.isAlive && !p.isFree;
+              const rowColor =
+                isWinner
+                  ? "bg-green-900/40 ring-1 ring-green-500/50"
+                  : isCurrentTurn && started
+                    ? "bg-blue-900/50 ring-1 ring-blue-500/50"
+                    : "";
+              const textColor = isWinner ? "text-green-300" : isEliminated ? "text-red-400" : isJailed ? "text-yellow-400" : "text-gray-300";
+              const statusLabel = isWinner
+                ? "Winner!"
+                : isHighPriest
+                  ? null
+                  : p.isAlive
+                    ? p.isFree
+                      ? "Alive"
+                      : "Jailed"
+                    : "Eliminated";
               return (
                 <li key={p.id}>
                   <button
                     type="button"
                     onClick={() => setSelectedProphetIndex(isSelected ? null : p.prophetIndex)}
-                    className={`flex w-full flex-wrap items-center justify-between gap-2 rounded px-2 py-1.5 text-left hover:bg-gray-800/50 ${
-                      isCurrentTurn ? "bg-blue-900/50 ring-1 ring-blue-500/50" : ""
-                    } ${isSelected ? "ring-1 ring-gray-500" : ""}`}
+                    className={`flex w-full flex-wrap items-center justify-between gap-2 rounded px-2 py-1.5 text-left hover:bg-gray-800/50 ${rowColor} ${isSelected ? "ring-1 ring-gray-500" : ""}`}
                   >
-                    <span className="text-gray-300">
+                    <span className={textColor}>
                       Prophet {p.prophetIndex}: <PlayerIdentity address={p.playerAddress} user={userInfo} />
                     </span>
-                    <span className="flex items-center gap-2 text-gray-500">
+                    <span className={`flex items-center gap-2 ${isWinner ? "text-green-400 font-medium" : isHighPriest ? "text-gray-500" : isEliminated ? "text-red-400" : isJailed ? "text-yellow-400" : "text-gray-500"}`}>
                       {isHighPriest ? (
                         <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-xs font-medium text-amber-200">
                           High Priest
                         </span>
                       ) : (
-                        p.isAlive
-                          ? p.isFree
-                            ? "Alive"
-                            : "Jailed"
-                          : "Eliminated"
+                        statusLabel
                       )}
                       {isSelected ? " ▼" : " ▶"}
                     </span>
