@@ -428,6 +428,7 @@ ponder.on("TicketEngine:gainReligion", async ({ event, context }) => {
       prophetIndex: Number(_target),
       targetIndex: null,
       success: true,
+      actorAddress: sender,
       blockNumber: event.block.number,
       transactionHash: event.transaction.hash,
     })

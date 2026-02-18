@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useEffect } from "react";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import {
   type CurrentGame,
   type GameEventItem,
@@ -99,41 +100,55 @@ function ProphetTurnActions({
   livingProphets: ProphetItem[];
 }) {
   const { writeContractAsync, isPending, error } = useWriteContract();
+  const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | null>(null);
+  const { isLoading: isConfirming, isSuccess: isReceiptSuccess } = useWaitForTransactionReceipt({ hash: pendingTxHash ?? undefined });
   const [action, setAction] = useState<"miracle" | "smite" | "accuse" | null>(null);
   const [target, setTarget] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (isReceiptSuccess && pendingTxHash) setPendingTxHash(null);
+  }, [isReceiptSuccess, pendingTxHash]);
+
   const run = async () => {
-    if (action === "miracle") {
-      await writeContractAsync({
-        address: GAMEPLAY_ENGINE_ADDRESS,
-        abi: gameplayEngineAbi,
-        functionName: "performMiracle",
-      });
-    } else if (action === "smite" && target != null) {
-      await writeContractAsync({
-        address: GAMEPLAY_ENGINE_ADDRESS,
-        abi: gameplayEngineAbi,
-        functionName: "attemptSmite",
-        args: [BigInt(target)],
-      });
-    } else if (action === "accuse" && target != null) {
-      await writeContractAsync({
-        address: GAMEPLAY_ENGINE_ADDRESS,
-        abi: gameplayEngineAbi,
-        functionName: "accuseOfBlasphemy",
-        args: [BigInt(target)],
-      });
+    try {
+      let hash: `0x${string}` | undefined;
+      if (action === "miracle") {
+        hash = await writeContractAsync({
+          address: GAMEPLAY_ENGINE_ADDRESS,
+          abi: gameplayEngineAbi,
+          functionName: "performMiracle",
+        });
+      } else if (action === "smite" && target != null) {
+        hash = await writeContractAsync({
+          address: GAMEPLAY_ENGINE_ADDRESS,
+          abi: gameplayEngineAbi,
+          functionName: "attemptSmite",
+          args: [BigInt(target)],
+        });
+      } else if (action === "accuse" && target != null) {
+        hash = await writeContractAsync({
+          address: GAMEPLAY_ENGINE_ADDRESS,
+          abi: gameplayEngineAbi,
+          functionName: "accuseOfBlasphemy",
+          args: [BigInt(target)],
+        });
+      }
+      if (hash) setPendingTxHash(hash);
+      setAction(null);
+      setTarget(null);
+    } catch {
+      // keep action/target for retry
     }
-    setAction(null);
-    setTarget(null);
   };
+
+  const waiting = isPending || (pendingTxHash != null && !isReceiptSuccess) || isConfirming;
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-green-400">Your turn.</p>
-      {isPending && (
+      {waiting && (
         <p className="text-sm text-amber-400">
-          Transaction pending… Waiting for confirmation and Chainlink fulfillment. Actions are disabled until the round updates.
+          Transaction submitted. Waiting for confirmation and Chainlink fulfillment. Actions are disabled until the round updates.
         </p>
       )}
       {!action && (
@@ -141,7 +156,7 @@ function ProphetTurnActions({
           <button
             type="button"
             onClick={() => setAction("miracle")}
-            disabled={isPending}
+            disabled={waiting}
             className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600 disabled:opacity-50"
           >
             Attempt miracle
@@ -149,7 +164,7 @@ function ProphetTurnActions({
           <button
             type="button"
             onClick={() => setAction("smite")}
-            disabled={isPending}
+            disabled={waiting}
             className="rounded bg-amber-700 px-3 py-1.5 text-sm text-white hover:bg-amber-600 disabled:opacity-50"
           >
             Attempt smite
@@ -157,7 +172,7 @@ function ProphetTurnActions({
           <button
             type="button"
             onClick={() => setAction("accuse")}
-            disabled={isPending}
+            disabled={waiting}
             className="rounded bg-red-800 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
           >
             Accuse
@@ -186,7 +201,7 @@ function ProphetTurnActions({
           <button
             type="button"
             onClick={run}
-            disabled={isPending || target == null}
+            disabled={waiting || target == null}
             className="rounded bg-blue-600 px-2 py-1 text-sm text-white disabled:opacity-50"
           >
             Submit
@@ -205,7 +220,7 @@ function ProphetTurnActions({
           <button
             type="button"
             onClick={run}
-            disabled={isPending}
+            disabled={waiting}
             className="rounded bg-blue-600 px-2 py-1 text-sm text-white disabled:opacity-50"
           >
             Confirm miracle
@@ -417,7 +432,9 @@ function NarrativeFeed({
   neynarUsersMap: Record<string, NeynarUserInfo> | undefined;
 }) {
   const getName = (prophetIndex: number) => getDisplayName(prophetIndex, prophets, neynarUsersMap);
+  const ACTION_LOG_SKIP_TYPES = ["prophetEnteredGame"]; // show only prophetRegistered for registration
   const narratives = events
+    .filter((ev) => !ACTION_LOG_SKIP_TYPES.includes(ev.type))
     .map((ev) => ({ ev, text: eventToNarrative(ev, getName, events) }))
     .filter((x): x is { ev: GameEventItem; text: string } => x.text != null);
   if (narratives.length === 0) return null;
@@ -526,7 +543,7 @@ export function CurrentGameView({
     <div className="space-y-4">
       <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
         <h3 className="text-lg font-semibold text-white">
-          Game #{String(game.gameNumber)} — {status}
+          Game #{String(game.gameNumber)} — {status === "started" ? "In progress" : status}
         </h3>
         <p className="text-sm text-gray-400">
           Prophets: {registered}
@@ -649,14 +666,44 @@ export function CurrentGameView({
                       {isSelected ? " ▼" : " ▶"}
                     </span>
                   </button>
-                  {isSelected && narratives.length > 0 && (
+                  {isSelected && (
                     <div className="mt-1 border-l-2 border-gray-700 pl-3 pb-2">
-                      <p className="mb-1 text-xs text-gray-500">Actions by this prophet</p>
-                      <ul className="space-y-0.5 text-xs text-gray-400">
-                        {narratives.map(({ ev, text }, i) => (
-                          <li key={i}>{getEventEmoji(ev.type)} {text}</li>
-                        ))}
-                      </ul>
+                      {isHighPriest && (
+                        <div className="mb-2 text-xs">
+                          <p className="text-gray-500">
+                            Current allegiance:{" "}
+                            {(() => {
+                              const ac = game.acolytes?.items?.find(
+                                (a) => a.ownerAddress?.toLowerCase() === p.playerAddress.toLowerCase()
+                              );
+                              return ac != null ? `Prophet ${ac.prophetIndex}` : "None";
+                            })()}
+                          </p>
+                          {(() => {
+                            const history = events.filter(
+                              (e) =>
+                                e.type === "gainReligion" &&
+                                e.actorAddress?.toLowerCase() === p.playerAddress.toLowerCase()
+                            );
+                            if (history.length === 0) return null;
+                            return (
+                              <p className="mt-0.5 text-gray-500">
+                                Allegiance history: {history.map((e) => `Prophet ${e.prophetIndex}`).join(" → ")}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      {narratives.length > 0 && (
+                        <>
+                          <p className="mb-1 text-xs text-gray-500">Actions by this prophet</p>
+                          <ul className="space-y-0.5 text-xs text-gray-400">
+                            {narratives.map(({ ev, text }, i) => (
+                              <li key={i}>{getEventEmoji(ev.type)} {text}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
                     </div>
                   )}
                   {isCurrentTurn && started && <ForceTurnButton />}

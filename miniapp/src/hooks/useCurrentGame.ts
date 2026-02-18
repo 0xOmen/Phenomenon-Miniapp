@@ -26,6 +26,7 @@ export type GameEventItem = {
   targetIndex: number | null;
   success: boolean | null;
   targetIsAlive?: boolean | null;
+  actorAddress?: string | null;
   blockNumber: string;
   transactionHash: string;
 };
@@ -78,6 +79,7 @@ const CURRENT_GAME_QUERY = `
           targetIndex
           success
           targetIsAlive
+          actorAddress
           blockNumber
           transactionHash
         }

@@ -79,6 +79,7 @@ export const gameEvent = onchainTable(
     targetIndex: t.integer(),
     success: t.boolean(),
     targetIsAlive: t.boolean(), // for accusation: true = target sent to jail, false = eliminated
+    actorAddress: t.hex(), // e.g. sender for gainReligion (who bought tickets)
     blockNumber: t.bigint().notNull(),
     transactionHash: t.hex().notNull(),
   }),

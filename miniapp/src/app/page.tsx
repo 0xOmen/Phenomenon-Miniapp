@@ -19,7 +19,6 @@ export default function Home() {
       <main className="min-h-screen p-6 pb-20">
         {activeTab === "current" && (
           <section>
-            <h2 className="mb-3 text-lg font-semibold text-white">Current Game</h2>
             <CurrentGameView
               game={currentGame}
               isLoading={gamesLoading || currentLoading}
