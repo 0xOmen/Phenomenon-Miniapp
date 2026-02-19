@@ -37,11 +37,17 @@ export function PriorGamesView() {
   const { writeContractAsync, data: txHash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const getDisplayName = (prophetIndex: number) => {
-    const p = priorGame?.prophets?.items?.find((x) => x.prophetIndex === prophetIndex);
+  const shortAddress = (addr: string) => {
+    if (!addr || addr.length < 10) return addr;
+    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+  };
+
+  const getDisplayName = (prophetIndex: number, prophets?: { prophetIndex: number; playerAddress: string }[]) => {
+    const list = prophets ?? priorGame?.prophets?.items ?? [];
+    const p = list.find((x) => x.prophetIndex === prophetIndex);
     if (!p) return `Prophet ${prophetIndex}`;
     const u = neynarUsersMap?.[p.playerAddress.toLowerCase()];
-    return u?.display_name ?? u?.username ?? `Prophet ${prophetIndex}`;
+    return u?.username ?? u?.display_name ?? shortAddress(p.playerAddress);
   };
 
   const handleClaim = async () => {
@@ -97,11 +103,10 @@ export function PriorGamesView() {
             const winnerProphet = g.prophets?.items?.find(
               (p) => p.prophetIndex === (g.winnerProphetIndex ?? -1)
             );
-            const winnerName = winnerProphet
-              ? neynarUsersMap?.[winnerProphet.playerAddress.toLowerCase()]?.display_name ??
-                neynarUsersMap?.[winnerProphet.playerAddress.toLowerCase()]?.username ??
-                `Prophet ${g.winnerProphetIndex}`
-              : null;
+            const winnerName =
+              winnerProphet && g.winnerProphetIndex != null
+                ? getDisplayName(g.winnerProphetIndex, g.prophets?.items)
+                : null;
             const label =
               g.status === "ended" && winnerName != null
                 ? `${winnerName} won`
@@ -125,7 +130,7 @@ export function PriorGamesView() {
                       <div className="space-y-3 text-sm">
                         {winnerIdx != null && (
                           <p className="text-gray-300">
-                            Winner: {getDisplayName(winnerIdx)}
+                            Winner: {getDisplayName(winnerIdx, priorGame?.prophets?.items)}
                           </p>
                         )}
                         {address ? (

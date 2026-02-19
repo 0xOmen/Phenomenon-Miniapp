@@ -79,11 +79,7 @@ function RegisterProphetButton({ gameId }: { gameId: string }) {
         disabled={isPending}
         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
       >
-        {isPending
-          ? "Confirm in wallet…"
-          : canPlay
-            ? "Play as Prophet"
-            : "Approve & Play as Prophet"}
+        {isPending ? "Confirm in wallet…" : "Play as Prophet"}
       </button>
       {error && <p className="text-sm text-red-400">{error.message}</p>}
     </div>
@@ -590,9 +586,8 @@ export function CurrentGameView({
               )}
               {address && prophet && (
                 <p className="text-green-400">
-                  You are Prophet {prophet.prophetIndex}. Need{" "}
-                  {required != null ? Math.max(0, required - registered) : "—"} more prophets to
-                  register.
+                  You are registered! Waiting for{" "}
+                  {required != null ? Math.max(0, required - registered) : "—"} more players to start.
                 </p>
               )}
               {address && !prophet && (

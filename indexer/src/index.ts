@@ -104,14 +104,36 @@ ponder.on("GameplayEngine:gameStarted", async ({ event, context }) => {
   const gameNumber = event.args.gameNumber;
   const gameId = String(gameNumber);
 
-  await context.db.update(game, { id: gameId }).set({
-    status: GAME_STATUS.started,
-    currentProphetTurn: 0,
-  });
-
   const prophetsForGame = await context.db.sql.query.prophet.findMany({
     where: (t, { eq }) => eq(t.gameId, gameId),
   });
+
+  await context.db.update(game, { id: gameId }).set({
+    status: GAME_STATUS.started,
+    currentProphetTurn: 0,
+    totalTickets: BigInt(prophetsForGame.length),
+  });
+
+  for (const p of prophetsForGame) {
+    const acolyteId = `${gameId}-${p.playerAddress}`;
+    await context.db
+      .insert(acolyte)
+      .values({
+        id: acolyteId,
+        gameId,
+        ownerAddress: p.playerAddress,
+        prophetIndex: p.prophetIndex,
+        ticketCount: 1n,
+      })
+      .onConflictDoUpdate((row) => ({
+        prophetIndex: p.prophetIndex,
+        ticketCount: 1n,
+      }));
+    await context.db.update(prophet, { id: p.id }).set({
+      accolites: p.accolites + 1n,
+    });
+  }
+
   const { Phenomenon } = context.contracts;
   for (const p of prophetsForGame) {
     try {
