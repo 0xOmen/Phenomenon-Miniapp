@@ -12,7 +12,7 @@ const TOKEN_DECIMALS = 18;
 
 function formatTokens(wei: string | bigint): string {
   const n = typeof wei === "string" ? BigInt(wei) : wei;
-  const div = 10n ** BigInt(TOKEN_DECIMALS);
+  const div = BigInt(10) ** BigInt(TOKEN_DECIMALS);
   const whole = n / div;
   const frac = n % div;
   const fracStr = frac.toString().padStart(TOKEN_DECIMALS, "0").slice(0, 4).replace(/0+$/, "") || "0";
@@ -66,10 +66,10 @@ export function PriorGamesView() {
     (c) => c.ownerAddress?.toLowerCase() === walletLower
   );
   const winnerIdx = priorGame?.winnerProphetIndex ?? null;
-  const endTotal = priorGame?.endTotalTickets ? BigInt(priorGame.endTotalTickets) : 0n;
-  const winningTickets = priorGame?.winningTicketsAtEnd ? BigInt(priorGame.winningTicketsAtEnd) : 0n;
+  const endTotal = priorGame?.endTotalTickets ? BigInt(priorGame.endTotalTickets) : BigInt(0);
+  const winningTickets = priorGame?.winningTicketsAtEnd ? BigInt(priorGame.winningTicketsAtEnd) : BigInt(0);
   const winningPct =
-    endTotal > 0n ? Math.round(Number((winningTickets * 10000n) / endTotal) / 100) : 0;
+    endTotal > BigInt(0) ? Math.round(Number((winningTickets * BigInt(10000)) / endTotal) / 100) : 0;
 
   const hasWinningTickets = myAcolyte && winnerIdx != null && myAcolyte.prophetIndex === winnerIdx;
   const hasClaimed = !!myClaim;
@@ -81,7 +81,7 @@ export function PriorGamesView() {
   const estimatedValue =
     hasWinningTickets &&
     !hasClaimed &&
-    endTotal > 0n &&
+    endTotal > BigInt(0) &&
     priorGame?.tokenBalance
       ? (BigInt(priorGame.tokenBalance) * BigInt(myAcolyte!.ticketCount)) / endTotal
       : null;
