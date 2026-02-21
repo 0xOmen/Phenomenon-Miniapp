@@ -502,6 +502,67 @@ function StartNewGameButton({ numberOfProphets }: { numberOfProphets: number }) 
   );
 }
 
+function HighPriestAllegianceButton({
+  prophetIndex,
+  currentAllegianceIndex,
+  livingProphets,
+  getName,
+}: {
+  prophetIndex: number;
+  currentAllegianceIndex: number | null;
+  livingProphets: ProphetItem[];
+  getName: (idx: number) => string;
+}) {
+  const { writeContractAsync, isPending, error } = useWriteContract();
+  const [target, setTarget] = useState<number | null>(null);
+
+  const eligibleTargets = livingProphets.filter(
+    (p) => p.prophetIndex !== prophetIndex && p.prophetIndex !== currentAllegianceIndex
+  );
+
+  if (eligibleTargets.length === 0) return null;
+
+  return (
+    <div className="mt-2 space-y-1">
+      <p className="text-xs text-gray-500">Give allegiance to:</p>
+      <div className="flex flex-wrap gap-1">
+        {eligibleTargets.map((p) => (
+          <button
+            key={p.prophetIndex}
+            type="button"
+            onClick={() => setTarget(p.prophetIndex)}
+            className={`rounded px-2 py-0.5 text-xs ${
+              target === p.prophetIndex
+                ? "bg-blue-600 text-white"
+                : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+            }`}
+          >
+            {getName(p.prophetIndex)}
+          </button>
+        ))}
+      </div>
+      {target != null && (
+        <button
+          type="button"
+          onClick={() =>
+            writeContractAsync({
+              address: TICKET_ENGINE_ADDRESS,
+              abi: ticketEngineAbi,
+              functionName: "highPriest",
+              args: [BigInt(prophetIndex), BigInt(target)],
+            })
+          }
+          disabled={isPending}
+          className="mt-1 rounded bg-amber-700 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+        >
+          {isPending ? "Confirm…" : `Pledge to ${getName(target)}`}
+        </button>
+      )}
+      {error && <p className="mt-1 text-xs text-red-400">{error.message}</p>}
+    </div>
+  );
+}
+
 export function CurrentGameView({
   game,
   isLoading,
@@ -719,6 +780,9 @@ export function CurrentGameView({
                   </button>
                   {isSelected && (
                     <div className="mt-1 border-l-2 border-gray-700 pl-3 pb-2">
+                      <p className="mb-2 text-xs text-gray-400">
+                        Supremacy: {supremacyPct}% ({String(BigInt(p.accolites ?? 0))} Acolyte{BigInt(p.accolites ?? 0) !== BigInt(1) ? "s" : ""}, {String(BigInt(p.highPriests ?? 0))} High Priest{BigInt(p.highPriests ?? 0) !== BigInt(1) ? "s" : ""})
+                      </p>
                       {isHighPriest && (
                         <div className="mb-2 text-xs">
                           <p className="text-gray-500">
@@ -727,7 +791,7 @@ export function CurrentGameView({
                               const ac = game.acolytes?.items?.find(
                                 (a) => a.ownerAddress?.toLowerCase() === p.playerAddress.toLowerCase()
                               );
-                              return ac != null ? `Prophet ${ac.prophetIndex}` : "None";
+                              return ac != null ? getName(ac.prophetIndex) : "None";
                             })()}
                           </p>
                           {(() => {
@@ -739,10 +803,22 @@ export function CurrentGameView({
                             if (history.length === 0) return null;
                             return (
                               <p className="mt-0.5 text-gray-500">
-                                Allegiance history: {history.map((e) => `Prophet ${e.prophetIndex}`).join(" → ")}
+                                Allegiance history: {history.map((e) => getName(e.prophetIndex ?? -1)).join(" → ")}
                               </p>
                             );
                           })()}
+                          {address && p.playerAddress.toLowerCase() === address.toLowerCase() && started && livingProphets.length > 2 && (
+                            <HighPriestAllegianceButton
+                              prophetIndex={p.prophetIndex}
+                              currentAllegianceIndex={
+                                game.acolytes?.items?.find(
+                                  (a) => a.ownerAddress?.toLowerCase() === p.playerAddress.toLowerCase()
+                                )?.prophetIndex ?? null
+                              }
+                              livingProphets={livingProphets}
+                              getName={getName}
+                            />
+                          )}
                         </div>
                       )}
                       {narratives.length > 0 && (

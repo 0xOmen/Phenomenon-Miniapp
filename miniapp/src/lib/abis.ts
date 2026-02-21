@@ -131,4 +131,14 @@ export const ticketEngineAbi = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { name: "_senderProphetNum", type: "uint256" },
+      { name: "_target", type: "uint256" },
+    ],
+    name: "highPriest",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
