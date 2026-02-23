@@ -132,6 +132,13 @@ export const ticketEngineAbi = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "isTicketSalesEnabled",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       { name: "_gameNumber", type: "uint256" },
       { name: "_player", type: "address" },

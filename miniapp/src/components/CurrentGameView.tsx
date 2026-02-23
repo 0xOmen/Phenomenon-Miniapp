@@ -257,6 +257,7 @@ function BuyTicketSection({
   const [prophetIndex, setProphetIndex] = useState<number | null>(null);
   const [amount, setAmount] = useState("1");
   const [approved, setApproved] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   let ticketCount = BigInt(0);
   try {
@@ -270,6 +271,12 @@ function BuyTicketSection({
     ? livingProphets.find((p) => p.prophetIndex === prophetIndex)
     : null;
   const supply = selectedProphet ? BigInt(selectedProphet.accolites ?? 0) : BigInt(0);
+
+  const { data: ticketSalesEnabled } = useReadContract({
+    address: TICKET_ENGINE_ADDRESS,
+    abi: ticketEngineAbi,
+    functionName: "isTicketSalesEnabled",
+  });
 
   const { data: price } = useReadContract({
     address: TICKET_ENGINE_ADDRESS,
@@ -294,12 +301,14 @@ function BuyTicketSection({
     supply: String(supply), price: price != null ? String(price) : null,
     allowance: allowance != null ? String(allowance) : null,
     needsApproval, approved, address,
+    ticketSalesEnabled,
     contractAddress: TICKET_ENGINE_ADDRESS,
     tokenAddress: TEST_TOKEN_ADDRESS,
   });
 
   const handleApprove = async () => {
     if (!address || price == null) return;
+    setLocalError(null);
     console.log("[BuyTickets] Approving:", { spender: TICKET_ENGINE_ADDRESS, amount: String(price) });
     try {
       const hash = await writeApprove({
@@ -311,18 +320,23 @@ function BuyTicketSection({
       console.log("[BuyTickets] Approve tx hash:", hash);
       setApproved(true);
       await refetchAllowance();
-    } catch (e) {
-      console.error("[BuyTickets] Approve failed:", e);
+    } catch (e: unknown) {
+      const err = e as Error;
+      console.error("[BuyTickets] Approve failed:", err);
+      console.error("[BuyTickets] Approve error details:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      setLocalError(err.message?.slice(0, 300) ?? "Approve failed");
     }
   };
 
   const handleBuy = async () => {
     if (prophetIndex == null || !validAmount || !address) return;
+    setLocalError(null);
     const args = [BigInt(prophetIndex), ticketCount] as const;
     console.log("[BuyTickets] Sending getReligion:", {
       address: TICKET_ENGINE_ADDRESS,
       functionName: "getReligion",
       args: [String(args[0]), String(args[1])],
+      ticketSalesEnabled,
     });
     try {
       const hash = await writeBuy({
@@ -330,18 +344,34 @@ function BuyTicketSection({
         abi: ticketEngineAbi,
         functionName: "getReligion",
         args,
+        gas: BigInt(500000),
       });
       console.log("[BuyTickets] Buy tx hash:", hash);
       setProphetIndex(null);
       setAmount("1");
       setApproved(false);
-    } catch (e) {
-      console.error("[BuyTickets] Buy failed:", e);
+    } catch (e: unknown) {
+      const err = e as Error & { cause?: unknown; shortMessage?: string; metaMessages?: string[] };
+      console.error("[BuyTickets] Buy failed:", err);
+      console.error("[BuyTickets] Full error name:", err.name);
+      console.error("[BuyTickets] Short message:", err.shortMessage);
+      console.error("[BuyTickets] Meta messages:", err.metaMessages);
+      console.error("[BuyTickets] Cause:", err.cause);
+      const detail = err.shortMessage || err.message?.slice(0, 500) || "Buy failed";
+      setLocalError(detail);
     }
   };
 
   const txPending = isApproving || isBuying;
-  const displayError = approveError || buyError;
+  const displayError = localError || approveError?.message || buyError?.message;
+
+  if (ticketSalesEnabled === false) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-yellow-400">Ticket sales are currently disabled.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -351,7 +381,7 @@ function BuyTicketSection({
           <button
             key={p.id}
             type="button"
-            onClick={() => { setProphetIndex(p.prophetIndex); setApproved(false); }}
+            onClick={() => { setProphetIndex(p.prophetIndex); setApproved(false); setLocalError(null); }}
             className={`rounded px-2 py-1 text-sm ${
               prophetIndex === p.prophetIndex ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"
             }`}
@@ -367,7 +397,7 @@ function BuyTicketSection({
               type="number"
               min={1}
               value={amount}
-              onChange={(e) => { setAmount(e.target.value); setApproved(false); }}
+              onChange={(e) => { setAmount(e.target.value); setApproved(false); setLocalError(null); }}
               className="w-20 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white"
             />
             {needsApproval ? (
@@ -397,7 +427,7 @@ function BuyTicketSection({
           )}
         </div>
       )}
-      {displayError && <p className="text-sm text-red-400">{displayError.message}</p>}
+      {displayError && <p className="text-sm text-red-400">{displayError}</p>}
     </div>
   );
 }
