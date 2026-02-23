@@ -252,12 +252,9 @@ function BuyTicketSection({
   livingProphets: ProphetItem[];
 }) {
   const { address } = useAccount();
-  const { writeContractAsync: writeApprove, isPending: isApproving, error: approveError } = useWriteContract();
-  const { writeContractAsync: writeBuy, isPending: isBuying, error: buyError } = useWriteContract();
+  const { writeContractAsync, isPending, error } = useWriteContract();
   const [prophetIndex, setProphetIndex] = useState<number | null>(null);
   const [amount, setAmount] = useState("1");
-  const [approved, setApproved] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
 
   let ticketCount = BigInt(0);
   try {
@@ -286,7 +283,7 @@ function BuyTicketSection({
     query: { enabled: prophetIndex != null && validAmount },
   });
 
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+  const { data: allowance } = useReadContract({
     address: TEST_TOKEN_ADDRESS,
     abi: erc20Abi,
     functionName: "allowance",
@@ -294,76 +291,31 @@ function BuyTicketSection({
     query: { enabled: !!address && prophetIndex != null && validAmount },
   });
 
-  const needsApproval = !approved && price != null && allowance != null && allowance < price;
+  const needsApproval = price != null && allowance != null && allowance < price;
 
-  console.log("[BuyTickets] state:", {
-    prophetIndex, amount, ticketCount: String(ticketCount), validAmount,
-    supply: String(supply), price: price != null ? String(price) : null,
-    allowance: allowance != null ? String(allowance) : null,
-    needsApproval, approved, address,
-    ticketSalesEnabled,
-    contractAddress: TICKET_ENGINE_ADDRESS,
-    tokenAddress: TEST_TOKEN_ADDRESS,
-  });
-
-  const handleApprove = async () => {
-    if (!address || price == null) return;
-    setLocalError(null);
-    console.log("[BuyTickets] Approving:", { spender: PHENOMENON_ADDRESS, amount: String(price) });
-    try {
-      const hash = await writeApprove({
-        address: TEST_TOKEN_ADDRESS,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [PHENOMENON_ADDRESS, price],
-      });
-      console.log("[BuyTickets] Approve tx hash:", hash);
-      setApproved(true);
-      await refetchAllowance();
-    } catch (e: unknown) {
-      const err = e as Error;
-      console.error("[BuyTickets] Approve failed:", err);
-      console.error("[BuyTickets] Approve error details:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
-      setLocalError(err.message?.slice(0, 300) ?? "Approve failed");
-    }
-  };
-
-  const handleBuy = async () => {
+  const buy = async () => {
     if (prophetIndex == null || !validAmount || !address) return;
-    setLocalError(null);
-    const args = [BigInt(prophetIndex), ticketCount] as const;
-    console.log("[BuyTickets] Sending getReligion:", {
-      address: TICKET_ENGINE_ADDRESS,
-      functionName: "getReligion",
-      args: [String(args[0]), String(args[1])],
-      ticketSalesEnabled,
-    });
     try {
-      const hash = await writeBuy({
+      if (needsApproval && price != null) {
+        await writeContractAsync({
+          address: TEST_TOKEN_ADDRESS,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [PHENOMENON_ADDRESS, price],
+        });
+      }
+      await writeContractAsync({
         address: TICKET_ENGINE_ADDRESS,
         abi: ticketEngineAbi,
         functionName: "getReligion",
-        args,
-        gas: BigInt(500000),
+        args: [BigInt(prophetIndex), ticketCount],
       });
-      console.log("[BuyTickets] Buy tx hash:", hash);
       setProphetIndex(null);
       setAmount("1");
-      setApproved(false);
-    } catch (e: unknown) {
-      const err = e as Error & { cause?: unknown; shortMessage?: string; metaMessages?: string[] };
-      console.error("[BuyTickets] Buy failed:", err);
-      console.error("[BuyTickets] Full error name:", err.name);
-      console.error("[BuyTickets] Short message:", err.shortMessage);
-      console.error("[BuyTickets] Meta messages:", err.metaMessages);
-      console.error("[BuyTickets] Cause:", err.cause);
-      const detail = err.shortMessage || err.message?.slice(0, 500) || "Buy failed";
-      setLocalError(detail);
+    } catch (e) {
+      console.error(e);
     }
   };
-
-  const txPending = isApproving || isBuying;
-  const displayError = localError || approveError?.message || buyError?.message;
 
   if (ticketSalesEnabled === false) {
     return (
@@ -381,7 +333,7 @@ function BuyTicketSection({
           <button
             key={p.id}
             type="button"
-            onClick={() => { setProphetIndex(p.prophetIndex); setApproved(false); setLocalError(null); }}
+            onClick={() => setProphetIndex(p.prophetIndex)}
             className={`rounded px-2 py-1 text-sm ${
               prophetIndex === p.prophetIndex ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"
             }`}
@@ -397,28 +349,17 @@ function BuyTicketSection({
               type="number"
               min={1}
               value={amount}
-              onChange={(e) => { setAmount(e.target.value); setApproved(false); setLocalError(null); }}
+              onChange={(e) => setAmount(e.target.value)}
               className="w-20 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white"
             />
-            {needsApproval ? (
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={txPending}
-                className="rounded bg-yellow-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-              >
-                {isApproving ? "Approving…" : "Approve $DEGEN"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleBuy}
-                disabled={txPending || !validAmount}
-                className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-              >
-                {isBuying ? "Buying…" : "Buy tickets"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={buy}
+              disabled={isPending || !validAmount}
+              className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+            >
+              {isPending ? "Confirm in wallet…" : "Buy tickets"}
+            </button>
           </div>
           {price != null && validAmount && (
             <p className="text-xs text-gray-400">
@@ -427,7 +368,7 @@ function BuyTicketSection({
           )}
         </div>
       )}
-      {displayError && <p className="text-sm text-red-400">{displayError}</p>}
+      {error && <p className="text-sm text-red-400">{error.message}</p>}
     </div>
   );
 }
