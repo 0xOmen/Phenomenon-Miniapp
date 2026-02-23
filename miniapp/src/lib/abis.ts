@@ -158,4 +158,13 @@ export const ticketEngineAbi = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { name: "_ticketsToSell", type: "uint256" },
+    ],
+    name: "loseReligion",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;

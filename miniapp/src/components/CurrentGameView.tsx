@@ -7,6 +7,7 @@ import {
   type CurrentGame,
   type GameEventItem,
   type ProphetItem,
+  type AcolyteItem,
   useMyProphetAndAcolyte,
 } from "@/hooks/useCurrentGame";
 import { useNeynarUsers } from "@/hooks/useNeynarUsers";
@@ -244,16 +245,21 @@ function formatTokenAmount(wei: bigint): string {
   return fracStr !== "0" ? `${whole}.${fracStr}` : String(whole);
 }
 
-function BuyTicketSection({
+function AcolyteTicketActions({
   gameId,
   livingProphets,
+  currentAcolyte,
+  getName,
 }: {
   gameId: string;
   livingProphets: ProphetItem[];
+  currentAcolyte: AcolyteItem | null;
+  getName: (idx: number) => string;
 }) {
   const { address } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
-  const [prophetIndex, setProphetIndex] = useState<number | null>(null);
+  const [mode, setMode] = useState<"buy" | "sell" | null>(currentAcolyte ? null : "buy");
+  const [selectedProphet, setSelectedProphet] = useState<number | null>(currentAcolyte?.prophetIndex ?? null);
   const [amount, setAmount] = useState("1");
 
   let ticketCount = BigInt(0);
@@ -264,10 +270,11 @@ function BuyTicketSection({
   }
   const validAmount = ticketCount > BigInt(0);
 
-  const selectedProphet = prophetIndex != null
-    ? livingProphets.find((p) => p.prophetIndex === prophetIndex)
+  const buyProphetIndex = currentAcolyte?.prophetIndex ?? selectedProphet;
+  const buyProphet = buyProphetIndex != null
+    ? livingProphets.find((p) => p.prophetIndex === buyProphetIndex)
     : null;
-  const supply = selectedProphet ? BigInt(selectedProphet.accolites ?? 0) : BigInt(0);
+  const supply = buyProphet ? BigInt(buyProphet.accolites ?? 0) : BigInt(0);
 
   const { data: ticketSalesEnabled } = useReadContract({
     address: TICKET_ENGINE_ADDRESS,
@@ -275,12 +282,21 @@ function BuyTicketSection({
     functionName: "isTicketSalesEnabled",
   });
 
-  const { data: price } = useReadContract({
+  const { data: buyPrice } = useReadContract({
     address: TICKET_ENGINE_ADDRESS,
     abi: ticketEngineAbi,
     functionName: "getPrice",
     args: [supply, ticketCount],
-    query: { enabled: prophetIndex != null && validAmount },
+    query: { enabled: mode === "buy" && buyProphetIndex != null && validAmount },
+  });
+
+  const sellSupply = supply > ticketCount ? supply - ticketCount : BigInt(0);
+  const { data: sellPrice } = useReadContract({
+    address: TICKET_ENGINE_ADDRESS,
+    abi: ticketEngineAbi,
+    functionName: "getPrice",
+    args: [sellSupply, ticketCount],
+    query: { enabled: mode === "sell" && validAmount && supply > BigInt(0) },
   });
 
   const { data: allowance } = useReadContract({
@@ -288,82 +304,157 @@ function BuyTicketSection({
     abi: erc20Abi,
     functionName: "allowance",
     args: address ? [address, PHENOMENON_ADDRESS] : undefined,
-    query: { enabled: !!address && prophetIndex != null && validAmount },
+    query: { enabled: !!address && mode === "buy" && validAmount },
   });
 
-  const needsApproval = price != null && allowance != null && allowance < price;
+  const needsApproval = mode === "buy" && buyPrice != null && allowance != null && allowance < buyPrice;
+  const heldCount = currentAcolyte ? BigInt(currentAcolyte.ticketCount) : BigInt(0);
+  const canSell = validAmount && ticketCount <= heldCount;
 
-  const buy = async () => {
-    if (prophetIndex == null || !validAmount || !address) return;
+  const handleBuy = async () => {
+    if (buyProphetIndex == null || !validAmount || !address) return;
     try {
-      if (needsApproval && price != null) {
+      if (needsApproval && buyPrice != null) {
         await writeContractAsync({
           address: TEST_TOKEN_ADDRESS,
           abi: erc20Abi,
           functionName: "approve",
-          args: [PHENOMENON_ADDRESS, price],
+          args: [PHENOMENON_ADDRESS, buyPrice],
         });
       }
       await writeContractAsync({
         address: TICKET_ENGINE_ADDRESS,
         abi: ticketEngineAbi,
         functionName: "getReligion",
-        args: [BigInt(prophetIndex), ticketCount],
+        args: [BigInt(buyProphetIndex), ticketCount],
       });
-      setProphetIndex(null);
+      setMode(null);
       setAmount("1");
     } catch (e) {
       console.error(e);
     }
   };
 
-  if (ticketSalesEnabled === false) {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-yellow-400">Ticket sales are currently disabled.</p>
-      </div>
-    );
-  }
+  const handleSell = async () => {
+    if (!validAmount || !canSell) return;
+    try {
+      await writeContractAsync({
+        address: TICKET_ENGINE_ADDRESS,
+        abi: ticketEngineAbi,
+        functionName: "loseReligion",
+        args: [ticketCount],
+      });
+      setMode(null);
+      setAmount("1");
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-gray-300">Buy tickets for a living prophet:</p>
-      <div className="flex flex-wrap gap-2">
-        {livingProphets.map((p) => (
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => { setMode(mode === "buy" ? null : "buy"); setAmount("1"); }}
+          className={`rounded px-3 py-1 text-sm ${
+            mode === "buy" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+          }`}
+        >
+          {currentAcolyte ? "Buy more tickets" : "Buy tickets"}
+        </button>
+        {ticketSalesEnabled && heldCount > BigInt(0) && (
           <button
-            key={p.id}
             type="button"
-            onClick={() => setProphetIndex(p.prophetIndex)}
-            className={`rounded px-2 py-1 text-sm ${
-              prophetIndex === p.prophetIndex ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"
+            onClick={() => { setMode(mode === "sell" ? null : "sell"); setAmount("1"); }}
+            className={`rounded px-3 py-1 text-sm ${
+              mode === "sell" ? "bg-red-600 text-white" : "bg-gray-700 text-gray-200 hover:bg-gray-600"
             }`}
           >
-            Prophet {p.prophetIndex}
+            Sell tickets
           </button>
-        ))}
+        )}
       </div>
-      {prophetIndex != null && (
+      {mode === "buy" && (
         <div className="space-y-2">
+          {!currentAcolyte && (
+            <>
+              <p className="text-xs text-gray-400">Select a prophet:</p>
+              <div className="flex flex-wrap gap-1">
+                {livingProphets.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedProphet(p.prophetIndex)}
+                    className={`rounded px-2 py-0.5 text-xs ${
+                      selectedProphet === p.prophetIndex ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                    }`}
+                  >
+                    {getName(p.prophetIndex)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {buyProphetIndex != null && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-20 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleBuy}
+                  disabled={isPending || !validAmount}
+                  className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+                >
+                  {isPending ? "Confirm in wallet…" : "Buy"}
+                </button>
+              </div>
+              {buyPrice != null && validAmount && (
+                <p className="text-xs text-gray-400">
+                  Cost: {formatTokenAmount(buyPrice)} $DEGEN
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {mode === "sell" && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400">
+            You hold {String(heldCount)} ticket(s). How many to sell?
+          </p>
           <div className="flex items-center gap-2">
             <input
               type="number"
               min={1}
+              max={Number(heldCount)}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-20 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white"
             />
             <button
               type="button"
-              onClick={buy}
-              disabled={isPending || !validAmount}
-              className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+              onClick={handleSell}
+              disabled={isPending || !canSell}
+              className="rounded bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-50"
             >
-              {isPending ? "Confirm in wallet…" : "Buy tickets"}
+              {isPending ? "Confirm in wallet…" : "Sell"}
             </button>
           </div>
-          {price != null && validAmount && (
+          {sellPrice != null && validAmount && canSell && (
             <p className="text-xs text-gray-400">
-              Cost: {formatTokenAmount(price)} $DEGEN
+              You will receive: {formatTokenAmount(sellPrice)} $DEGEN
+            </p>
+          )}
+          {!canSell && validAmount && (
+            <p className="text-xs text-red-400">
+              Cannot sell more than you hold.
             </p>
           )}
         </div>
@@ -783,15 +874,19 @@ export function CurrentGameView({
             </div>
           )}
           {!prophet && (
-            <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
-              {acolyte ? (
+            <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3">
+              {acolyte && (
                 <p className="text-sm text-gray-300">
-                  You hold {String(acolyte.ticketCount)} ticket(s) for Prophet {acolyte.prophetIndex}
-                  {acolyteProphetUsername ? ` (${acolyteProphetUsername})` : ""}.
+                  You hold {String(acolyte.ticketCount)} ticket(s) for{" "}
+                  {acolyteProphetUsername ?? getName(acolyte.prophetIndex)}.
                 </p>
-              ) : (
-                <BuyTicketSection gameId={game.id} livingProphets={livingProphets} />
               )}
+              <AcolyteTicketActions
+                gameId={game.id}
+                livingProphets={livingProphets}
+                currentAcolyte={acolyte}
+                getName={getName}
+              />
             </div>
           )}
         </>
