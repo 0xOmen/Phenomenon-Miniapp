@@ -290,7 +290,7 @@ function BuyTicketSection({
     address: TEST_TOKEN_ADDRESS,
     abi: erc20Abi,
     functionName: "allowance",
-    args: address ? [address, TICKET_ENGINE_ADDRESS] : undefined,
+    args: address ? [address, PHENOMENON_ADDRESS] : undefined,
     query: { enabled: !!address && prophetIndex != null && validAmount },
   });
 
@@ -309,13 +309,13 @@ function BuyTicketSection({
   const handleApprove = async () => {
     if (!address || price == null) return;
     setLocalError(null);
-    console.log("[BuyTickets] Approving:", { spender: TICKET_ENGINE_ADDRESS, amount: String(price) });
+    console.log("[BuyTickets] Approving:", { spender: PHENOMENON_ADDRESS, amount: String(price) });
     try {
       const hash = await writeApprove({
         address: TEST_TOKEN_ADDRESS,
         abi: erc20Abi,
         functionName: "approve",
-        args: [TICKET_ENGINE_ADDRESS, price],
+        args: [PHENOMENON_ADDRESS, price],
       });
       console.log("[BuyTickets] Approve tx hash:", hash);
       setApproved(true);
