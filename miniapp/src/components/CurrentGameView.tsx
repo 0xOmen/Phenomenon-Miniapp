@@ -252,17 +252,24 @@ function BuyTicketSection({
   livingProphets: ProphetItem[];
 }) {
   const { address } = useAccount();
-  const { writeContractAsync, isPending, error } = useWriteContract();
+  const { writeContractAsync: writeApprove, isPending: isApproving, error: approveError } = useWriteContract();
+  const { writeContractAsync: writeBuy, isPending: isBuying, error: buyError } = useWriteContract();
   const [prophetIndex, setProphetIndex] = useState<number | null>(null);
   const [amount, setAmount] = useState("1");
-  const [step, setStep] = useState<"idle" | "approving" | "buying">("idle");
+  const [approved, setApproved] = useState(false);
+
+  let ticketCount = BigInt(0);
+  try {
+    ticketCount = BigInt(amount || "0");
+  } catch {
+    ticketCount = BigInt(0);
+  }
+  const validAmount = ticketCount > BigInt(0);
 
   const selectedProphet = prophetIndex != null
     ? livingProphets.find((p) => p.prophetIndex === prophetIndex)
     : null;
   const supply = selectedProphet ? BigInt(selectedProphet.accolites ?? 0) : BigInt(0);
-  const ticketCount = BigInt(amount || "0");
-  const validAmount = ticketCount > BigInt(0);
 
   const { data: price } = useReadContract({
     address: TICKET_ENGINE_ADDRESS,
@@ -272,7 +279,7 @@ function BuyTicketSection({
     query: { enabled: prophetIndex != null && validAmount },
   });
 
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: TEST_TOKEN_ADDRESS,
     abi: erc20Abi,
     functionName: "allowance",
@@ -280,43 +287,61 @@ function BuyTicketSection({
     query: { enabled: !!address && prophetIndex != null && validAmount },
   });
 
-  const needsApproval = price != null && allowance != null && allowance < price;
+  const needsApproval = !approved && price != null && allowance != null && allowance < price;
 
-  const buy = async () => {
-    if (prophetIndex == null || !validAmount || !address) return;
+  console.log("[BuyTickets] state:", {
+    prophetIndex, amount, ticketCount: String(ticketCount), validAmount,
+    supply: String(supply), price: price != null ? String(price) : null,
+    allowance: allowance != null ? String(allowance) : null,
+    needsApproval, approved, address,
+    contractAddress: TICKET_ENGINE_ADDRESS,
+    tokenAddress: TEST_TOKEN_ADDRESS,
+  });
+
+  const handleApprove = async () => {
+    if (!address || price == null) return;
+    console.log("[BuyTickets] Approving:", { spender: TICKET_ENGINE_ADDRESS, amount: String(price) });
     try {
-      if (needsApproval && price != null) {
-        setStep("approving");
-        await writeContractAsync({
-          address: TEST_TOKEN_ADDRESS,
-          abi: erc20Abi,
-          functionName: "approve",
-          args: [TICKET_ENGINE_ADDRESS, price],
-        });
-      }
-      setStep("buying");
-      await writeContractAsync({
-        address: TICKET_ENGINE_ADDRESS,
-        abi: ticketEngineAbi,
-        functionName: "getReligion",
-        args: [BigInt(prophetIndex), ticketCount],
+      const hash = await writeApprove({
+        address: TEST_TOKEN_ADDRESS,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [TICKET_ENGINE_ADDRESS, price],
       });
-      setProphetIndex(null);
-      setAmount("1");
+      console.log("[BuyTickets] Approve tx hash:", hash);
+      setApproved(true);
+      await refetchAllowance();
     } catch (e) {
-      console.error(e);
-    } finally {
-      setStep("idle");
+      console.error("[BuyTickets] Approve failed:", e);
     }
   };
 
-  const buttonLabel = isPending
-    ? step === "approving"
-      ? "Approving…"
-      : "Buying…"
-    : needsApproval
-      ? "Approve & Buy"
-      : "Buy tickets";
+  const handleBuy = async () => {
+    if (prophetIndex == null || !validAmount || !address) return;
+    const args = [BigInt(prophetIndex), ticketCount] as const;
+    console.log("[BuyTickets] Sending getReligion:", {
+      address: TICKET_ENGINE_ADDRESS,
+      functionName: "getReligion",
+      args: [String(args[0]), String(args[1])],
+    });
+    try {
+      const hash = await writeBuy({
+        address: TICKET_ENGINE_ADDRESS,
+        abi: ticketEngineAbi,
+        functionName: "getReligion",
+        args,
+      });
+      console.log("[BuyTickets] Buy tx hash:", hash);
+      setProphetIndex(null);
+      setAmount("1");
+      setApproved(false);
+    } catch (e) {
+      console.error("[BuyTickets] Buy failed:", e);
+    }
+  };
+
+  const txPending = isApproving || isBuying;
+  const displayError = approveError || buyError;
 
   return (
     <div className="space-y-2">
@@ -326,7 +351,7 @@ function BuyTicketSection({
           <button
             key={p.id}
             type="button"
-            onClick={() => setProphetIndex(p.prophetIndex)}
+            onClick={() => { setProphetIndex(p.prophetIndex); setApproved(false); }}
             className={`rounded px-2 py-1 text-sm ${
               prophetIndex === p.prophetIndex ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"
             }`}
@@ -342,17 +367,28 @@ function BuyTicketSection({
               type="number"
               min={1}
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => { setAmount(e.target.value); setApproved(false); }}
               className="w-20 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white"
             />
-            <button
-              type="button"
-              onClick={buy}
-              disabled={isPending || !validAmount}
-              className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-            >
-              {buttonLabel}
-            </button>
+            {needsApproval ? (
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={txPending}
+                className="rounded bg-yellow-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+              >
+                {isApproving ? "Approving…" : "Approve $DEGEN"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleBuy}
+                disabled={txPending || !validAmount}
+                className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+              >
+                {isBuying ? "Buying…" : "Buy tickets"}
+              </button>
+            )}
           </div>
           {price != null && validAmount && (
             <p className="text-xs text-gray-400">
@@ -361,7 +397,7 @@ function BuyTicketSection({
           )}
         </div>
       )}
-      {error && <p className="text-sm text-red-400">{error.message}</p>}
+      {displayError && <p className="text-sm text-red-400">{displayError.message}</p>}
     </div>
   );
 }
@@ -732,10 +768,31 @@ export function CurrentGameView({
         <>
           {prophet && (
             <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
-              <p className="text-sm text-gray-300">
-                You are Prophet {prophet.prophetIndex}
-                {!prophet.isAlive && " (eliminated)"}.
-              </p>
+              {prophet.role === "highPriest" ? (
+                (() => {
+                  const myAcolyte = game.acolytes?.items?.find(
+                    (a) => a.ownerAddress?.toLowerCase() === address?.toLowerCase()
+                  );
+                  const followedProphet = myAcolyte
+                    ? prophets.find((pp) => pp.prophetIndex === myAcolyte.prophetIndex)
+                    : null;
+                  const followedEliminated = followedProphet && !followedProphet.isAlive;
+                  return followedEliminated ? (
+                    <p className="text-sm text-red-400">
+                      You are Prophet {prophet.prophetIndex} (eliminated).
+                    </p>
+                  ) : (
+                    <p className="text-sm text-amber-300">
+                      You are a High Priest, lend your power to other prophets to win!
+                    </p>
+                  );
+                })()
+              ) : (
+                <p className="text-sm text-gray-300">
+                  You are Prophet {prophet.prophetIndex}
+                  {!prophet.isAlive && " (eliminated)"}.
+                </p>
+              )}
               {prophet.isAlive && isMyTurn && (
                 <ProphetTurnActions
                   gameId={game.id}
@@ -743,7 +800,7 @@ export function CurrentGameView({
                   livingProphets={livingProphets}
                 />
               )}
-              {prophet.isAlive && !isMyTurn && (
+              {prophet.isAlive && !isMyTurn && prophet.role !== "highPriest" && (
                 <p className="text-sm text-gray-400">
                   {currentTurnProphet
                     ? currentTurnUsername
