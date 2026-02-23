@@ -123,6 +123,16 @@ export const ticketEngineAbi = [
   },
   {
     inputs: [
+      { name: "supply", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "getPrice",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
       { name: "_gameNumber", type: "uint256" },
       { name: "_player", type: "address" },
     ],

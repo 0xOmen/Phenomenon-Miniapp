@@ -235,6 +235,15 @@ function ProphetTurnActions({
   );
 }
 
+function formatTokenAmount(wei: bigint): string {
+  const decimals = 18;
+  const div = BigInt(10) ** BigInt(decimals);
+  const whole = wei / div;
+  const frac = wei % div;
+  const fracStr = frac.toString().padStart(decimals, "0").slice(0, 4).replace(/0+$/, "") || "0";
+  return fracStr !== "0" ? `${whole}.${fracStr}` : String(whole);
+}
+
 function BuyTicketSection({
   gameId,
   livingProphets,
@@ -242,27 +251,76 @@ function BuyTicketSection({
   gameId: string;
   livingProphets: ProphetItem[];
 }) {
+  const { address } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
   const [prophetIndex, setProphetIndex] = useState<number | null>(null);
   const [amount, setAmount] = useState("1");
+  const [step, setStep] = useState<"idle" | "approving" | "buying">("idle");
+
+  const selectedProphet = prophetIndex != null
+    ? livingProphets.find((p) => p.prophetIndex === prophetIndex)
+    : null;
+  const supply = selectedProphet ? BigInt(selectedProphet.accolites ?? 0) : BigInt(0);
+  const ticketCount = BigInt(amount || "0");
+  const validAmount = ticketCount > BigInt(0);
+
+  const { data: price } = useReadContract({
+    address: TICKET_ENGINE_ADDRESS,
+    abi: ticketEngineAbi,
+    functionName: "getPrice",
+    args: [supply, ticketCount],
+    query: { enabled: prophetIndex != null && validAmount },
+  });
+
+  const { data: allowance } = useReadContract({
+    address: TEST_TOKEN_ADDRESS,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: address ? [address, TICKET_ENGINE_ADDRESS] : undefined,
+    query: { enabled: !!address && prophetIndex != null && validAmount },
+  });
+
+  const needsApproval = price != null && allowance != null && allowance < price;
 
   const buy = async () => {
-    if (prophetIndex == null) return;
-    const num = BigInt(amount || "1");
-    if (num < BigInt(1)) return;
-    await writeContractAsync({
-      address: TICKET_ENGINE_ADDRESS,
-      abi: ticketEngineAbi,
-      functionName: "getReligion",
-      args: [BigInt(prophetIndex), num],
-    });
-    setProphetIndex(null);
-    setAmount("1");
+    if (prophetIndex == null || !validAmount || !address) return;
+    try {
+      if (needsApproval && price != null) {
+        setStep("approving");
+        await writeContractAsync({
+          address: TEST_TOKEN_ADDRESS,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [TICKET_ENGINE_ADDRESS, price],
+        });
+      }
+      setStep("buying");
+      await writeContractAsync({
+        address: TICKET_ENGINE_ADDRESS,
+        abi: ticketEngineAbi,
+        functionName: "getReligion",
+        args: [BigInt(prophetIndex), ticketCount],
+      });
+      setProphetIndex(null);
+      setAmount("1");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setStep("idle");
+    }
   };
+
+  const buttonLabel = isPending
+    ? step === "approving"
+      ? "Approving…"
+      : "Buying…"
+    : needsApproval
+      ? "Approve & Buy"
+      : "Buy tickets";
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-gray-300">Buy tickets (getReligion) for a living prophet:</p>
+      <p className="text-sm text-gray-300">Buy tickets for a living prophet:</p>
       <div className="flex flex-wrap gap-2">
         {livingProphets.map((p) => (
           <button
@@ -278,22 +336,29 @@ function BuyTicketSection({
         ))}
       </div>
       {prophetIndex != null && (
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={1}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-20 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white"
-          />
-          <button
-            type="button"
-            onClick={buy}
-            disabled={isPending}
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-          >
-            Buy tickets
-          </button>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-20 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white"
+            />
+            <button
+              type="button"
+              onClick={buy}
+              disabled={isPending || !validAmount}
+              className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+            >
+              {buttonLabel}
+            </button>
+          </div>
+          {price != null && validAmount && (
+            <p className="text-xs text-gray-400">
+              Cost: {formatTokenAmount(price)} $DEGEN
+            </p>
+          )}
         </div>
       )}
       {error && <p className="text-sm text-red-400">{error.message}</p>}
