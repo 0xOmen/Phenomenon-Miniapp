@@ -14,7 +14,7 @@ This document outlines the plan to rewrite the Phenomenon blockchain game front-
 **Target state (this rewrite):**
 - **Farcaster miniapp**: discoverable in Farcaster, signed-in users (FID), native wallet; **Farcaster miniapp SDK**.
 - **Indexed state**: game/prophet/ticket/history in a database via **Ponder on Railway**; PostgreSQL on Railway (Supabase fallback if needed).
-- **Chain**: **Base Sepolia** for initial testing; contracts deployed on or after block **37667749**.
+- **Chain**: **Base Sepolia** for initial testing; contracts deployed on or after block **38444062**.
 - **Contracts**: Three verified contracts — Phenomenon.sol, GameplayEngine.sol, TicketEngine.sol (ABIs from sepolia.basescan.org or repo).
 - **Game token**: **fDEGEN** (custom ERC20) for testing.
 - **Farcaster data**: **Neynar** (API key in `.env`); UX uses Farcaster usernames, PFPs, and profile data for prophets and user info.
@@ -47,7 +47,7 @@ This document outlines the plan to rewrite the Phenomenon blockchain game front-
 │  (Railway DB)        │            │  if needed           │
 └─────────────────────┘            └─────────────────────┘
          │
-         │ sync from (Base Sepolia, block ≥ 37667749)
+         │ sync from (Base Sepolia, block ≥ 38444062)
          ▼
 ┌─────────────────────┐
 │  Alchemy Base       │  Phenomenon.sol, GameplayEngine.sol,
@@ -66,18 +66,17 @@ This document outlines the plan to rewrite the Phenomenon blockchain game front-
 ### Chain and start block
 
 - **Chain:** Base Sepolia (initial testing).
-- **Indexer start block:** 37667749 (contracts deployed on or after this block).
-- **Note:** Two prophets are already registered for testing event indexing.
+- **Indexer start block:** 38444062 (contracts deployed on or after this block).
 
 ### Smart contracts (Base Sepolia, verified on sepolia.basescan.org)
 
 | Contract            | Address | .env variable |
 |---------------------|---------|----------------|
-| Phenomenon.sol      | `0x2472FCd582b6f48D4977b6b1AD44Ad7a0B444827` | `PHENOMENON_ADDRESS` |
-| GameplayEngine.sol  | `0xf952f23061031d9e8561C5ca12381C2eE04919F3` | `GAMEPLAY_ENGINE_ADDRESS` |
-| TicketEngine.sol    | `0x18A7DB39F6FF7F64575E768d9dE0cB56D787ca29` | `TICKET_ENGINE_ADDRESS` |
+| Phenomenon.sol      | `0x47e7517c0641e00b06429eaedc4fdd331ba2df13` | `PHENOMENON_ADDRESS` |
+| GameplayEngine.sol  | `0x3d703fcca56522a066165c3ab2d7652be7d22163` | `GAMEPLAY_ENGINE_ADDRESS` |
+| TicketEngine.sol    | `0x04964cdc1a4cb24a1b1212cdbada8a84eeb6388b` | `TICKET_ENGINE_ADDRESS` |
 
-- **ABIs:** From [sepolia.basescan.org](https://sepolia.basescan.org) (e.g. [Phenomenon](https://sepolia.basescan.org/address/0x2472fcd582b6f48d4977b6b1ad44ad7a0b444827#code)) or the Phenomenon-Foundry repo. Supply ABIs in the Ponder project and frontend config as needed.
+- **ABIs:** From [sepolia.basescan.org](https://sepolia.basescan.org) (e.g. [Phenomenon](https://sepolia.basescan.org/address/0x47e7517c0641e00b06429eaedc4fdd331ba2df13#code)) or the Phenomenon-Foundry repo. Supply ABIs in the Ponder project and frontend config as needed.
 
 ### Game token
 
@@ -93,7 +92,7 @@ This document outlines the plan to rewrite the Phenomenon blockchain game front-
 | Game token     | `TEST_TOKEN_ADDRESS` | fDEGEN |
 | Farcaster data | `NEYNAR_API_KEY` | Usernames, PFPs, profiles |
 
-Domain and Vercel are configured manually after the repo is pushed to GitHub. Ensure `.env` uses the contract addresses and variable names above (e.g. `PHENOMENON_ADDRESS=0x2472FCd582b6f48D4977b6b1AD44Ad7a0B444827`).
+Domain and Vercel are configured manually after the repo is pushed to GitHub. Ensure `.env` uses the contract addresses and variable names above (e.g. `PHENOMENON_ADDRESS=0x47e7517c0641e00b06429eaedc4fdd331ba2df13`).
 
 ---
 
@@ -206,7 +205,7 @@ If you later add a small API (e.g. Quick Auth, user preferences by FID), use a s
 
 ## 8. Data Model (Indexer)
 
-Align with the **three-contract** Phenomenon-Foundry setup (Phenomenon.sol, GameplayEngine.sol, TicketEngine.sol) on **Base Sepolia**. Events may be emitted from different contracts; configure Ponder to listen to each contract’s address and ABI (start block 37667749).
+Align with the **three-contract** Phenomenon-Foundry setup (Phenomenon.sol, GameplayEngine.sol, TicketEngine.sol) on **Base Sepolia**. Events may be emitted from different contracts; configure Ponder to listen to each contract’s address and ABI (start block 38444062).
 
 ### 8.1 Entities (Ponder tables / views)
 
@@ -242,7 +241,7 @@ Configure `ponder.config.ts` with all three contract addresses and ABIs; registe
 ### Phase 1: Foundation (Indexer + API)
 
 1. **Ponder project**
-   - Add **three contracts** to `ponder.config.ts`: Phenomenon (`PHENOMENON_ADDRESS`), GameplayEngine (`GAMEPLAY_ENGINE_ADDRESS`), TicketEngine (`TICKET_ENGINE_ADDRESS`). Use ABIs from sepolia.basescan.org (or repo). Network: **baseSepolia**; start block: **37667749**.
+   - Add **three contracts** to `ponder.config.ts`: Phenomenon (`PHENOMENON_ADDRESS`), GameplayEngine (`GAMEPLAY_ENGINE_ADDRESS`), TicketEngine (`TICKET_ENGINE_ADDRESS`). Use ABIs from sepolia.basescan.org (or repo). Network: **baseSepolia**; start block: **38444062**.
    - Define `ponder.schema.ts`: Game, Prophet, Acolyte/Tickets, optionally GameEvent.
    - Implement indexing functions for each event per contract; derive prophet list, turn, acolytes, token balance from events.
    - Expose GraphQL (and optional REST/Hono route if desired).
@@ -307,7 +306,7 @@ Configure `ponder.config.ts` with all three contract addresses and ABIs; registe
 
 | Layer              | Choice for this rewrite |
 |--------------------|--------------------------|
-| **Chain**          | Base Sepolia (start block 37667749) |
+| **Chain**          | Base Sepolia (start block 38444062) |
 | **Contracts**      | Phenomenon.sol, GameplayEngine.sol, TicketEngine.sol (addresses in §2.1) |
 | **Game token**     | fDEGEN (`TEST_TOKEN_ADDRESS`) |
 | **Indexing**       | Ponder on Railway |
@@ -335,7 +334,7 @@ Configure `ponder.config.ts` with all three contract addresses and ABIs; registe
 ## 13. Next Steps
 
 1. **ABIs:** Pull verified ABIs for Phenomenon.sol, GameplayEngine.sol, and TicketEngine.sol from [sepolia.basescan.org](https://sepolia.basescan.org) (or Phenomenon-Foundry repo) and add to Ponder + frontend.
-2. **Ponder:** Create Ponder project; add three contracts (addresses from §2.1), start block 37667749, Base Sepolia; implement schema and event handlers; deploy to Railway with `RAILWAY_TOKEN` and Railway Postgres.
+2. **Ponder:** Create Ponder project; add three contracts (addresses from §2.1), start block 38444062, Base Sepolia; implement schema and event handlers; deploy to Railway with `RAILWAY_TOKEN` and Railway Postgres.
 3. **Miniapp:** Scaffold with `create @farcaster/mini-app` or Next + SDK; configure Wagmi for Base Sepolia and Farcaster connector; wire contract addresses and fDEGEN approve; test enterGame (or equivalent) in Farcaster.
 4. **UI + Neynar:** Connect UI to Ponder GraphQL; integrate Neynar (`NEYNAR_API_KEY`) for prophet and user Farcaster usernames/PFPs; build lobby, in-game, acolyte, and end-game screens.
 5. **Vercel + domain:** Push project to GitHub; connect repo to Vercel; purchase domain and add it in Vercel; add `/.well-known/farcaster.json`; register miniapp in Farcaster developer tools.

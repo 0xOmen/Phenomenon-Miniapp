@@ -33,6 +33,6 @@ Farcaster miniapp and event indexer for the [Phenomenon](https://github.com/0xOm
 
 ## Implemented
 
-- **Phase 1**: Ponder indexer with three contracts (Base Sepolia, start block 37667749), schema (game, prophet, acolyte, game_event), event handlers, GraphQL API. Deploy to Railway with `RAILWAY_TOKEN` and Postgres.
+- **Phase 1**: Ponder indexer with three contracts (Base Sepolia, start block 38444062), schema (game, prophet, acolyte, game_event), event handlers, GraphQL API. Deploy to Railway with `RAILWAY_TOKEN` and Postgres.
 - **Phase 2 (shell)**: Next.js miniapp with Farcaster miniapp SDK, Wagmi, Base Sepolia, `sdk.actions.ready()`, connect wallet UI. Contract writes and fDEGEN approve are next.
 - **Phase 3+**: Game UI, Ponder GraphQL queries, Neynar profile components, manifest, and Vercel deploy are planned in the rewrite plan.

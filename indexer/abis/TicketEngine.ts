@@ -1,16 +1,45 @@
 // TicketEngine.sol – Complete ABI (Base Sepolia verified)
-// Full ABI at: https://sepolia.basescan.org/address/0x18A7DB39F6FF7F64575E768d9dE0cB56D787ca29#code
+// Full ABI at: https://sepolia.basescan.org/address/0x04964cdc1a4cb24a1b1212cdbada8a84eeb6388b#code
 export const TicketEngineAbi = [
   {
     inputs: [
       { internalType: "address", name: "gameContractAddress", type: "address" },
-      { internalType: "uint256", name: "ticketMultiplier", type: "uint256" },
+      { internalType: "uint256", name: "p0", type: "uint256" },
+      { internalType: "uint256", name: "r", type: "uint256" },
     ],
     stateMutability: "nonpayable",
     type: "constructor",
   },
+  {
+    inputs: [
+      { internalType: "uint256", name: "x", type: "uint256" },
+      { internalType: "uint256", name: "y", type: "uint256" },
+    ],
+    name: "PRBMath_MulDiv18_Overflow",
+    type: "error",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "x", type: "uint256" },
+      { internalType: "uint256", name: "y", type: "uint256" },
+      { internalType: "uint256", name: "denominator", type: "uint256" },
+    ],
+    name: "PRBMath_MulDiv_Overflow",
+    type: "error",
+  },
+  {
+    inputs: [{ internalType: "UD60x18", name: "x", type: "uint256" }],
+    name: "PRBMath_UD60x18_Exp2_InputTooBig",
+    type: "error",
+  },
+  {
+    inputs: [{ internalType: "UD60x18", name: "x", type: "uint256" }],
+    name: "PRBMath_UD60x18_Exp_InputTooBig",
+    type: "error",
+  },
   { inputs: [], name: "ReentrancyGuardReentrantCall", type: "error" },
   { inputs: [], name: "TicketEng__AddressIsEliminated", type: "error" },
+  { inputs: [], name: "TicketEng__EmptyGameNumbers", type: "error" },
   { inputs: [], name: "TicketEng__NotAllowed", type: "error" },
   { inputs: [], name: "TicketEng__NotEnoughTicketsOwned", type: "error" },
   { inputs: [], name: "TicketEng__NotInProgress", type: "error" },
@@ -140,11 +169,56 @@ export const TicketEngineAbi = [
   },
   {
     inputs: [
+      { internalType: "uint256[]", name: "_gameNumbers", type: "uint256[]" },
+      { internalType: "address", name: "_player", type: "address" },
+    ],
+    name: "claimTicketsForMultipleGames",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_player", type: "address" }],
+    name: "getClaimableGameNumbers",
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getGameContract",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getGrowthCoefficient",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getOwner",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
       { internalType: "uint256", name: "supply", type: "uint256" },
       { internalType: "uint256", name: "amount", type: "uint256" },
     ],
     name: "getPrice",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getProphetAllegianceChangeEnabled",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
     type: "function",
   },
@@ -168,6 +242,13 @@ export const TicketEngineAbi = [
     name: "getReligion",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getStartingPrice",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
     type: "function",
   },
   {
@@ -205,15 +286,6 @@ export const TicketEngineAbi = [
       },
     ],
     name: "setProphetAllegianceChangeEnabled",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "_ticketMultiplier", type: "uint256" },
-    ],
-    name: "setTicketMultiplier",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

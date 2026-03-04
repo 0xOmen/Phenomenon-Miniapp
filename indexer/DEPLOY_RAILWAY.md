@@ -106,7 +106,7 @@ GraphQL will be at **`https://<your-domain>/graphql`**. Use this as the indexer 
 ## Step 9: Deploy and check logs
 
 1. Trigger a deploy (e.g. push to the connected branch, or **Deploy** in Railway).
-2. Open **Deploy Logs** (or **Logs**). You should see Ponder starting, then backfilling from block 37667749. The first run can take a while.
+2. Open **Deploy Logs** (or **Logs**). You should see Ponder starting, then backfilling from block 38444062. The first run can take a while.
 3. When ready, Ponder serves **`/ready`** with 200. Railway will mark the deployment healthy.
 
 ---

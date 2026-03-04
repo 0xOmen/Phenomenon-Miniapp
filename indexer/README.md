@@ -33,7 +33,7 @@ Event indexer for Phenomenon game contracts on **Base Sepolia**. Exposes GraphQL
 - Phenomenon: `PHENOMENON_ADDRESS`
 - GameplayEngine: `GAMEPLAY_ENGINE_ADDRESS`
 - TicketEngine: `TICKET_ENGINE_ADDRESS`  
-  Start block: `37667749`.
+  Start block: `38444062`.
 
 ## Schema
 

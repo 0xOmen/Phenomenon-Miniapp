@@ -26,7 +26,6 @@ export const GameplayEngineAbi = [
   { inputs: [], name: "Game__NotInProgress", type: "error" },
   { inputs: [], name: "Game__OutOfTurn", type: "error" },
   { inputs: [], name: "Game__ProphetNotFree", type: "error" },
-  { inputs: [], name: "NoInlineSecrets", type: "error" },
   { inputs: [], name: "OnlyRouterCanFulfill", type: "error" },
   {
     inputs: [{ internalType: "bytes32", name: "requestId", type: "bytes32" }],

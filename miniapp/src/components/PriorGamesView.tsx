@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { usePonderGames } from "@/hooks/usePonderGames";
 import { usePriorGame } from "@/hooks/usePriorGame";
 import { useNeynarUsers } from "@/hooks/useNeynarUsers";
@@ -37,6 +37,26 @@ export function PriorGamesView() {
   const { writeContractAsync, data: txHash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
+  const { data: claimableGameNumbers, refetch: refetchClaimable } = useReadContract({
+    address: TICKET_ENGINE_ADDRESS,
+    abi: ticketEngineAbi,
+    functionName: "getClaimableGameNumbers",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+
+  const {
+    writeContractAsync: writeBatchClaim,
+    data: batchTxHash,
+    isPending: batchIsPending,
+    error: batchError,
+  } = useWriteContract();
+  const { isLoading: batchIsConfirming, isSuccess: batchIsSuccess } = useWaitForTransactionReceipt({
+    hash: batchTxHash,
+  });
+
+  const claimableCount = claimableGameNumbers?.length ?? 0;
+
   const shortAddress = (addr: string) => {
     if (!addr || addr.length < 10) return addr;
     return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -59,6 +79,22 @@ export function PriorGamesView() {
         functionName: "claimTickets",
         args: [BigInt(priorGame.gameNumber), address],
       });
+      refetchClaimable();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleClaimAll = async () => {
+    if (!address || !claimableGameNumbers || claimableGameNumbers.length === 0) return;
+    try {
+      await writeBatchClaim({
+        address: TICKET_ENGINE_ADDRESS,
+        abi: ticketEngineAbi,
+        functionName: "claimTicketsForMultipleGames",
+        args: [claimableGameNumbers as bigint[], address],
+      });
+      refetchClaimable();
     } catch (e) {
       console.error(e);
     }
@@ -95,6 +131,27 @@ export function PriorGamesView() {
   return (
     <section>
       <h2 className="mb-3 text-lg font-semibold text-white">Prior Games</h2>
+      {address && claimableCount > 1 && !batchIsSuccess && (
+        <div className="mb-4 rounded-lg border border-green-700 bg-green-900/30 p-3 space-y-2">
+          <p className="text-sm text-green-300">
+            You have unclaimed winnings from {claimableCount} games!
+          </p>
+          <button
+            type="button"
+            onClick={handleClaimAll}
+            disabled={batchIsPending || batchIsConfirming}
+            className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50"
+          >
+            {batchIsPending || batchIsConfirming ? "Confirm in wallet…" : `Claim all winnings (${claimableCount} games)`}
+          </button>
+          {batchError && <p className="text-xs text-red-400">{batchError.message}</p>}
+        </div>
+      )}
+      {batchIsSuccess && (
+        <div className="mb-4 rounded-lg border border-green-700 bg-green-900/30 p-3">
+          <p className="text-sm text-green-400">All winnings claimed successfully!</p>
+        </div>
+      )}
       {gamesLoading && <p className="text-gray-500">Loading…</p>}
       {gamesError && <p className="text-red-400">Could not load games.</p>}
       {!gamesLoading && !gamesError && (

@@ -167,4 +167,23 @@ export const ticketEngineAbi = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { name: "_player", type: "address" },
+    ],
+    name: "getClaimableGameNumbers",
+    outputs: [{ name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "_gameNumbers", type: "uint256[]" },
+      { name: "_player", type: "address" },
+    ],
+    name: "claimTicketsForMultipleGames",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;

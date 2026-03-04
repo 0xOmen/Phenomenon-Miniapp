@@ -3,11 +3,11 @@ import { PhenomenonAbi } from "./abis/Phenomenon";
 import { GameplayEngineAbi } from "./abis/GameplayEngine";
 import { TicketEngineAbi } from "./abis/TicketEngine";
 
-const PHENOMENON_ADDRESS = process.env.PHENOMENON_ADDRESS ?? "0x2472FCd582b6f48D4977b6b1AD44Ad7a0B444827";
-const GAMEPLAY_ENGINE_ADDRESS = process.env.GAMEPLAY_ENGINE_ADDRESS ?? "0xf952f23061031d9e8561C5ca12381C2eE04919F3";
-const TICKET_ENGINE_ADDRESS = process.env.TICKET_ENGINE_ADDRESS ?? "0x18A7DB39F6FF7F64575E768d9dE0cB56D787ca29";
+const PHENOMENON_ADDRESS = process.env.PHENOMENON_ADDRESS ?? "0x47e7517c0641e00b06429eaedc4fdd331ba2df13";
+const GAMEPLAY_ENGINE_ADDRESS = process.env.GAMEPLAY_ENGINE_ADDRESS ?? "0x3d703fcca56522a066165c3ab2d7652be7d22163";
+const TICKET_ENGINE_ADDRESS = process.env.TICKET_ENGINE_ADDRESS ?? "0x04964cdc1a4cb24a1b1212cdbada8a84eeb6388b";
 
-const START_BLOCK = Number(process.env.PHENOMENON_START_BLOCK ?? "37667749");
+const START_BLOCK = Number(process.env.PHENOMENON_START_BLOCK ?? "38444062");
 
 // Use Postgres when PONDER_DATABASE_URL or DATABASE_URL (Railway reference) is set.
 const databaseUrl = process.env.PONDER_DATABASE_URL ?? process.env.DATABASE_URL;
