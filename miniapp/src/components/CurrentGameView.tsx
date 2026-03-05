@@ -91,20 +91,42 @@ function ProphetTurnActions({
   gameId,
   prophetIndex,
   livingProphets,
+  eventsCount,
 }: {
   gameId: string;
   prophetIndex: number;
   livingProphets: ProphetItem[];
+  eventsCount: number;
 }) {
   const { writeContractAsync, isPending, error } = useWriteContract();
   const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | null>(null);
-  const { isLoading: isConfirming, isSuccess: isReceiptSuccess } = useWaitForTransactionReceipt({ hash: pendingTxHash ?? undefined });
+  const { isLoading: isConfirming, isSuccess: isReceiptSuccess, isError: isReceiptError } = useWaitForTransactionReceipt({ hash: pendingTxHash ?? undefined });
   const [action, setAction] = useState<"miracle" | "smite" | "accuse" | null>(null);
   const [target, setTarget] = useState<number | null>(null);
+  const [waitingForOracle, setWaitingForOracle] = useState(false);
+  const [eventsCountAtSubmit, setEventsCountAtSubmit] = useState<number | null>(null);
 
   useEffect(() => {
-    if (isReceiptSuccess && pendingTxHash) setPendingTxHash(null);
+    if (isReceiptSuccess && pendingTxHash) {
+      setWaitingForOracle(true);
+      setPendingTxHash(null);
+    }
   }, [isReceiptSuccess, pendingTxHash]);
+
+  useEffect(() => {
+    if (isReceiptError && pendingTxHash) {
+      setWaitingForOracle(false);
+      setPendingTxHash(null);
+      setEventsCountAtSubmit(null);
+    }
+  }, [isReceiptError, pendingTxHash]);
+
+  useEffect(() => {
+    if (waitingForOracle && eventsCountAtSubmit != null && eventsCount > eventsCountAtSubmit) {
+      setWaitingForOracle(false);
+      setEventsCountAtSubmit(null);
+    }
+  }, [waitingForOracle, eventsCountAtSubmit, eventsCount]);
 
   const run = async () => {
     try {
@@ -130,7 +152,10 @@ function ProphetTurnActions({
           args: [BigInt(target)],
         });
       }
-      if (hash) setPendingTxHash(hash);
+      if (hash) {
+        setPendingTxHash(hash);
+        setEventsCountAtSubmit(eventsCount);
+      }
       setAction(null);
       setTarget(null);
     } catch {
@@ -138,14 +163,18 @@ function ProphetTurnActions({
     }
   };
 
-  const waiting = isPending || (pendingTxHash != null && !isReceiptSuccess) || isConfirming;
+  const waiting = isPending || pendingTxHash != null || isConfirming || waitingForOracle;
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-green-400">Your turn.</p>
       {waiting && (
         <p className="text-sm text-amber-400">
-          Transaction submitted. Waiting for confirmation and Chainlink fulfillment. Actions are disabled until the round updates.
+          {isPending
+            ? "Confirm the transaction in your wallet…"
+            : waitingForOracle
+              ? "Transaction confirmed on-chain. Waiting for Chainlink oracle fulfillment…"
+              : "Transaction submitted. Waiting for on-chain confirmation…"}
         </p>
       )}
       {!action && (
@@ -609,7 +638,7 @@ function NarrativeFeed({
   );
 }
 
-function ForceTurnButton() {
+function ForceTurnButton({ eventsCount }: { eventsCount: number }) {
   const { data: lastRound } = useReadContract({
     address: PHENOMENON_ADDRESS,
     abi: phenomenonAbi,
@@ -621,21 +650,76 @@ function ForceTurnButton() {
     functionName: "s_maxInterval",
   });
   const { writeContractAsync, isPending, error } = useWriteContract();
+  const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | null>(null);
+  const { isLoading: isConfirming, isSuccess: isReceiptSuccess, isError: isReceiptError } = useWaitForTransactionReceipt({ hash: pendingTxHash ?? undefined });
+  const [waitingForOracle, setWaitingForOracle] = useState(false);
+  const [eventsCountAtSubmit, setEventsCountAtSubmit] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isReceiptSuccess && pendingTxHash) {
+      setWaitingForOracle(true);
+      setPendingTxHash(null);
+    }
+  }, [isReceiptSuccess, pendingTxHash]);
+
+  useEffect(() => {
+    if (isReceiptError && pendingTxHash) {
+      setWaitingForOracle(false);
+      setPendingTxHash(null);
+      setEventsCountAtSubmit(null);
+    }
+  }, [isReceiptError, pendingTxHash]);
+
+  useEffect(() => {
+    if (waitingForOracle && eventsCountAtSubmit != null && eventsCount > eventsCountAtSubmit) {
+      setWaitingForOracle(false);
+      setEventsCountAtSubmit(null);
+    }
+  }, [waitingForOracle, eventsCountAtSubmit, eventsCount]);
+
+  const waiting = isPending || pendingTxHash != null || isConfirming || waitingForOracle;
+
   const now = Math.floor(Date.now() / 1000);
   const deadline =
     lastRound != null && maxInterval != null ? Number(lastRound) + Number(maxInterval) : 0;
   const canForce = deadline > 0 && now >= deadline;
-  if (!canForce) return null;
+  if (!canForce && !waiting) return null;
+
+  const handleForce = async () => {
+    try {
+      const hash = await writeContractAsync({ address: GAMEPLAY_ENGINE_ADDRESS, abi: gameplayEngineAbi, functionName: "forceMiracle" });
+      if (hash) {
+        setPendingTxHash(hash);
+        setEventsCountAtSubmit(eventsCount);
+      }
+    } catch {
+      // error handled by wagmi
+    }
+  };
+
   return (
     <div className="mt-2">
       <button
         type="button"
-        onClick={() => writeContractAsync({ address: GAMEPLAY_ENGINE_ADDRESS, abi: gameplayEngineAbi, functionName: "forceMiracle" })}
-        disabled={isPending}
+        onClick={handleForce}
+        disabled={waiting}
         className="rounded bg-amber-700 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
       >
-        {isPending ? "Confirm…" : "Force turn"}
+        {waiting
+          ? waitingForOracle
+            ? "Waiting for oracle…"
+            : isPending
+              ? "Confirm…"
+              : "Processing…"
+          : "Force turn"}
       </button>
+      {waiting && !isPending && (
+        <p className="mt-1 text-xs text-amber-400">
+          {waitingForOracle
+            ? "Transaction confirmed. Waiting for oracle fulfillment…"
+            : "Waiting for on-chain confirmation…"}
+        </p>
+      )}
       {error && <span className="ml-2 text-xs text-red-400">{error.message}</span>}
     </div>
   );
@@ -643,6 +727,26 @@ function ForceTurnButton() {
 
 function StartNewGameButton({ numberOfProphets }: { numberOfProphets: number }) {
   const { writeContractAsync, isPending, error } = useWriteContract();
+  const { data: lastRoundTs } = useReadContract({
+    address: PHENOMENON_ADDRESS,
+    abi: phenomenonAbi,
+    functionName: "s_lastRoundTimestamp",
+  });
+
+  const COOLDOWN = 240;
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const deadline = lastRoundTs != null ? Number(lastRoundTs) + COOLDOWN : 0;
+  const remaining = Math.max(0, deadline - now);
+  const coolingDown = remaining > 0;
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const countdown = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
   return (
     <div>
       <button
@@ -655,10 +759,10 @@ function StartNewGameButton({ numberOfProphets }: { numberOfProphets: number }) 
             args: [numberOfProphets],
           })
         }
-        disabled={isPending}
+        disabled={isPending || coolingDown}
         className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50"
       >
-        {isPending ? "Confirm in wallet…" : "Start New Game"}
+        {isPending ? "Confirm in wallet…" : coolingDown ? `Next game in ${countdown}` : "Start New Game"}
       </button>
       {error && <p className="mt-2 text-sm text-red-400">{error.message}</p>}
     </div>
@@ -860,6 +964,7 @@ export function CurrentGameView({
                   gameId={game.id}
                   prophetIndex={prophet.prophetIndex}
                   livingProphets={livingProphets}
+                  eventsCount={events.length}
                 />
               )}
               {prophet.isAlive && !isMyTurn && prophet.role !== "highPriest" && (
@@ -1021,7 +1126,7 @@ export function CurrentGameView({
                       )}
                     </div>
                   )}
-                  {isCurrentTurn && started && <ForceTurnButton />}
+                  {isCurrentTurn && started && <ForceTurnButton eventsCount={events.length} />}
                 </li>
               );
             })}
