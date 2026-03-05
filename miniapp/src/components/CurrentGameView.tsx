@@ -934,15 +934,28 @@ export function CurrentGameView({
         <>
           {prophet && (
             <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
-              {prophet.role === "highPriest" ? (
-                (() => {
+              {(() => {
+                const wasEliminatedByEvent = !prophet.isAlive && events.some(
+                  (e) =>
+                    (e.type === "smiteAttempted" && e.targetIndex === prophet.prophetIndex && e.success) ||
+                    (e.type === "miracleAttempted" && e.prophetIndex === prophet.prophetIndex && e.success === false) ||
+                    (e.type === "accusation" && e.targetIndex === prophet.prophetIndex && e.success && e.targetIsAlive === false)
+                );
+                const isEffectivelyHighPriest = prophet.role === "highPriest" || (!prophet.isAlive && !wasEliminatedByEvent);
+
+                if (isEffectivelyHighPriest) {
                   const myAcolyte = game.acolytes?.items?.find(
                     (a) => a.ownerAddress?.toLowerCase() === address?.toLowerCase()
                   );
                   const followedProphet = myAcolyte
                     ? prophets.find((pp) => pp.prophetIndex === myAcolyte.prophetIndex)
                     : null;
-                  const followedEliminated = followedProphet && !followedProphet.isAlive;
+                  const followedEliminated = followedProphet && !followedProphet.isAlive && events.some(
+                    (e) =>
+                      (e.type === "smiteAttempted" && e.targetIndex === followedProphet.prophetIndex && e.success) ||
+                      (e.type === "miracleAttempted" && e.prophetIndex === followedProphet.prophetIndex && e.success === false) ||
+                      (e.type === "accusation" && e.targetIndex === followedProphet.prophetIndex && e.success && e.targetIsAlive === false)
+                  );
                   return followedEliminated ? (
                     <p className="text-sm text-red-400">
                       You are Prophet {prophet.prophetIndex} (eliminated).
@@ -952,13 +965,15 @@ export function CurrentGameView({
                       You are a High Priest, lend your power to other prophets to win!
                     </p>
                   );
-                })()
-              ) : (
-                <p className="text-sm text-gray-300">
-                  You are Prophet {prophet.prophetIndex}
-                  {!prophet.isAlive && " (eliminated)"}.
-                </p>
-              )}
+                }
+
+                return (
+                  <p className="text-sm text-gray-300">
+                    You are Prophet {prophet.prophetIndex}
+                    {!prophet.isAlive && " (eliminated)"}.
+                  </p>
+                );
+              })()}
               {prophet.isAlive && isMyTurn && (
                 <ProphetTurnActions
                   gameId={game.id}
@@ -996,6 +1011,8 @@ export function CurrentGameView({
           )}
         </>
       )}
+
+      {started && <ForceTurnButton eventsCount={events.length} />}
 
       {ended && (
         <div className="space-y-3">
@@ -1126,7 +1143,6 @@ export function CurrentGameView({
                       )}
                     </div>
                   )}
-                  {isCurrentTurn && started && <ForceTurnButton eventsCount={events.length} />}
                 </li>
               );
             })}
