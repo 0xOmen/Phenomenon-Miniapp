@@ -28,6 +28,7 @@ export type PriorGameDetail = {
   winnerProphetIndex: number | null;
   endTotalTickets: string | null;
   winningTicketsAtEnd: string | null;
+  tokensPerTicket: string | null;
   tokenBalance: string;
   prophets: { items: PriorGameProphet[] };
   acolytes: { items: PriorGameAcolyte[] };
@@ -43,6 +44,7 @@ const PRIOR_GAME_QUERY = `
       winnerProphetIndex
       endTotalTickets
       winningTicketsAtEnd
+      tokensPerTicket
       tokenBalance
       prophets(limit: 20) {
         items {

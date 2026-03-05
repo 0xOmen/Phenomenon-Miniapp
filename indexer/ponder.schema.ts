@@ -27,6 +27,7 @@ export const game = onchainTable(
     winnerProphetIndex: t.integer(), // set when ended
     endTotalTickets: t.bigint(), // snapshot at game end for prior-game stats
     winningTicketsAtEnd: t.bigint(), // tickets for winner at game end (for prior-game %)
+    tokensPerTicket: t.bigint(), // value per winning ticket, set by tokensPerTicketSet event
   }),
   (table) => ({
     gameNumberIdx: index().on(table.gameNumber),

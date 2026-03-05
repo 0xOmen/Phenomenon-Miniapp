@@ -231,6 +231,15 @@ ponder.on("Phenomenon:gameEnded", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
+ponder.on("Phenomenon:tokensPerTicketSet", async ({ event, context }) => {
+  const { gameNumber, tokensPerTicket: tpt } = event.args;
+  const gameId = String(gameNumber);
+  const gameRow = await context.db.find(game, { id: gameId });
+  if (gameRow) {
+    await context.db.update(game, { id: gameId }).set({ tokensPerTicket: tpt });
+  }
+});
+
 ponder.on("Phenomenon:numberOfProphetsSet", async ({ event, context }) => {
   const numberOfProphets = Number(event.args.numberOfProphets);
   await context.db

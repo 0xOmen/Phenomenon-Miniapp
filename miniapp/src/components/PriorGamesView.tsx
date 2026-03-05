@@ -123,9 +123,8 @@ export function PriorGamesView() {
   const estimatedValue =
     hasWinningTickets &&
     !hasClaimed &&
-    winningTickets > BigInt(0) &&
-    priorGame?.tokenBalance
-      ? (BigInt(priorGame.tokenBalance) * BigInt(myAcolyte!.ticketCount)) / winningTickets
+    priorGame?.tokensPerTicket
+      ? BigInt(priorGame.tokensPerTicket) * BigInt(myAcolyte!.ticketCount)
       : null;
 
   return (
