@@ -73,7 +73,7 @@ This document outlines the plan to rewrite the Phenomenon blockchain game front-
 | Contract            | Address | .env variable |
 |---------------------|---------|----------------|
 | Phenomenon.sol      | `0x47e7517c0641e00b06429eaedc4fdd331ba2df13` | `PHENOMENON_ADDRESS` |
-| GameplayEngine.sol  | `0x3d703fcca56522a066165c3ab2d7652be7d22163` | `GAMEPLAY_ENGINE_ADDRESS` |
+| GameplayEngine.sol  | `0x4E5AD6885918c29423A1eddFBED4030d60a238b8` | `GAMEPLAY_ENGINE_ADDRESS` |
 | TicketEngine.sol    | `0x04964cdc1a4cb24a1b1212cdbada8a84eeb6388b` | `TICKET_ENGINE_ADDRESS` |
 
 - **ABIs:** From [sepolia.basescan.org](https://sepolia.basescan.org) (e.g. [Phenomenon](https://sepolia.basescan.org/address/0x47e7517c0641e00b06429eaedc4fdd331ba2df13#code)) or the Phenomenon-Foundry repo. Supply ABIs in the Ponder project and frontend config as needed.
