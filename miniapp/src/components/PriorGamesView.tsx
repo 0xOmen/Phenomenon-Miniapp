@@ -201,7 +201,7 @@ export function PriorGamesView() {
                                 <p className="text-gray-300">
                                   You hold {String(myAcolyte!.ticketCount)} winning ticket(s).
                                   {estimatedValue != null && (
-                                    <> Estimated value: {formatTokens(estimatedValue)} tokens.</>
+                                    <> Estimated value: {formatTokens(estimatedValue)} DEGEN.</>
                                   )}
                                 </p>
                                 <button

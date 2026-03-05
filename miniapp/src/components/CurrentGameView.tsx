@@ -655,6 +655,12 @@ function ForceTurnButton({ eventsCount }: { eventsCount: number }) {
   const [waitingForOracle, setWaitingForOracle] = useState(false);
   const [eventsCountAtSubmit, setEventsCountAtSubmit] = useState<number | null>(null);
 
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (isReceiptSuccess && pendingTxHash) {
       setWaitingForOracle(true);
@@ -679,11 +685,14 @@ function ForceTurnButton({ eventsCount }: { eventsCount: number }) {
 
   const waiting = isPending || pendingTxHash != null || isConfirming || waitingForOracle;
 
-  const now = Math.floor(Date.now() / 1000);
   const deadline =
     lastRound != null && maxInterval != null ? Number(lastRound) + Number(maxInterval) : 0;
-  const canForce = deadline > 0 && now >= deadline;
-  if (!canForce && !waiting) return null;
+  const remaining = Math.max(0, deadline - now);
+  const canForce = deadline > 0 && remaining === 0;
+  const coolingDown = deadline > 0 && remaining > 0;
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const countdown = `${minutes}:${seconds.toString().padStart(2, "0")}`;
 
   const handleForce = async () => {
     try {
@@ -702,7 +711,7 @@ function ForceTurnButton({ eventsCount }: { eventsCount: number }) {
       <button
         type="button"
         onClick={handleForce}
-        disabled={waiting}
+        disabled={waiting || coolingDown}
         className="rounded bg-amber-700 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
       >
         {waiting
@@ -711,7 +720,9 @@ function ForceTurnButton({ eventsCount }: { eventsCount: number }) {
             : isPending
               ? "Confirm…"
               : "Processing…"
-          : "Force turn"}
+          : coolingDown
+            ? `Force turn in ${countdown}`
+            : "Force turn"}
       </button>
       {waiting && !isPending && (
         <p className="mt-1 text-xs text-amber-400">
@@ -1012,8 +1023,6 @@ export function CurrentGameView({
         </>
       )}
 
-      {started && <ForceTurnButton eventsCount={events.length} />}
-
       {ended && (
         <div className="space-y-3">
           <p className="text-gray-400">
@@ -1143,6 +1152,7 @@ export function CurrentGameView({
                       )}
                     </div>
                   )}
+                  {isCurrentTurn && started && <ForceTurnButton eventsCount={events.length} />}
                 </li>
               );
             })}
