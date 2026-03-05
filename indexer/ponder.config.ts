@@ -4,7 +4,7 @@ import { GameplayEngineAbi } from "./abis/GameplayEngine";
 import { TicketEngineAbi } from "./abis/TicketEngine";
 
 const PHENOMENON_ADDRESS = process.env.PHENOMENON_ADDRESS ?? "0x47e7517c0641e00b06429eaedc4fdd331ba2df13";
-const GAMEPLAY_ENGINE_ADDRESS = process.env.GAMEPLAY_ENGINE_ADDRESS ?? "0x4E5AD6885918c29423A1eddFBED4030d60a238b8";
+const GAMEPLAY_ENGINE_ADDRESS = process.env.GAMEPLAY_ENGINE_ADDRESS ?? "0xEebf282F9BC6388924A2F66A478EC2Abd0ECFad4";
 const TICKET_ENGINE_ADDRESS = process.env.TICKET_ENGINE_ADDRESS ?? "0x04964cdc1a4cb24a1b1212cdbada8a84eeb6388b";
 
 const START_BLOCK = Number(process.env.PHENOMENON_START_BLOCK ?? "38444062");
