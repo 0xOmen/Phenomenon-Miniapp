@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { FooterTabs, type TabId } from "@/components/FooterTabs";
 import { CurrentGameView } from "@/components/CurrentGameView";
 import { PriorGamesView } from "@/components/PriorGamesView";
+import { RulesView } from "@/components/RulesView";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>("current");
@@ -36,6 +37,8 @@ export default function Home() {
             <p className="text-gray-500">Stats view coming soon.</p>
           </section>
         )}
+
+        {activeTab === "rules" && <RulesView />}
       </main>
       <FooterTabs activeTab={activeTab} onTabChange={setActiveTab} />
     </>

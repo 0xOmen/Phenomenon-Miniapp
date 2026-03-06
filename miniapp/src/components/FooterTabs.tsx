@@ -1,11 +1,12 @@
 "use client";
 
-export type TabId = "current" | "prior" | "stats";
+export type TabId = "current" | "prior" | "stats" | "rules";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "current", label: "Current Game" },
   { id: "prior", label: "Prior Games" },
   { id: "stats", label: "Stats" },
+  { id: "rules", label: "Rules" },
 ];
 
 export function FooterTabs({

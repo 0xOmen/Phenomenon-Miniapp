@@ -92,11 +92,13 @@ function ProphetTurnActions({
   prophetIndex,
   livingProphets,
   eventsCount,
+  isJailed,
 }: {
   gameId: string;
   prophetIndex: number;
   livingProphets: ProphetItem[];
   eventsCount: number;
+  isJailed: boolean;
 }) {
   const { writeContractAsync, isPending, error } = useWriteContract();
   const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | null>(null);
@@ -198,10 +200,11 @@ function ProphetTurnActions({
           <button
             type="button"
             onClick={() => setAction("accuse")}
-            disabled={waiting}
+            disabled={waiting || isJailed}
+            title={isJailed ? "Jailed prophets cannot accuse" : undefined}
             className="rounded bg-red-800 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
           >
-            Accuse
+            {isJailed ? "Accuse (jailed)" : "Accuse"}
           </button>
         </div>
       )}
@@ -991,6 +994,7 @@ export function CurrentGameView({
                   prophetIndex={prophet.prophetIndex}
                   livingProphets={livingProphets}
                   eventsCount={events.length}
+                  isJailed={!prophet.isFree}
                 />
               )}
               {prophet.isAlive && !isMyTurn && prophet.role !== "highPriest" && (
