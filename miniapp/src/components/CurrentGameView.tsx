@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import {
   type CurrentGame,
@@ -24,6 +25,11 @@ import {
   gameplayEngineAbi,
   ticketEngineAbi,
 } from "@/lib/abis";
+
+const GameScene = dynamic(
+  () => import("@/components/scene/GameScene").then((m) => m.GameScene),
+  { ssr: false, loading: () => <div className="h-[420px] rounded-lg border border-gray-800 bg-gray-950 flex items-center justify-center"><p className="text-gray-500">Loading scene…</p></div> }
+);
 
 function RegisterProphetButton({ gameId }: { gameId: string }) {
   const { address } = useAccount();
@@ -858,6 +864,7 @@ export function CurrentGameView({
   const prophetAddresses = game?.prophets?.items?.map((p) => p.playerAddress) ?? [];
   const { data: neynarUsersMap } = useNeynarUsers(prophetAddresses);
   const [selectedProphetIndex, setSelectedProphetIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"basic" | "scene">("basic");
 
   if (isLoading) {
     return <p className="text-gray-500">Loading current game…</p>;
@@ -909,13 +916,43 @@ export function CurrentGameView({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-        <h3 className="text-lg font-semibold text-white">
-          Game #{String(game.gameNumber)} — {status === "started" ? "In progress" : status}
-        </h3>
-        <p className="text-sm text-gray-400">
-          Prophets: {registered}
-          {required != null && ` / ${required}`} • Turn: Prophet {currentTurnIndex}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-white">
+              Game #{String(game.gameNumber)} — {status === "started" ? "In progress" : status}
+            </h3>
+            <p className="text-sm text-gray-400">
+              Prophets: {registered}
+              {required != null && ` / ${required}`} • Turn: Prophet {currentTurnIndex}
+            </p>
+          </div>
+          {started && (
+            <div className="flex rounded-lg border border-gray-700 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setViewMode("basic")}
+                className={`px-3 py-1 text-xs font-medium transition-colors ${
+                  viewMode === "basic"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-800 text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                Basic
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("scene")}
+                className={`px-3 py-1 text-xs font-medium transition-colors ${
+                  viewMode === "scene"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-800 text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                Scene
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Open: waiting for prophets */}
@@ -1039,6 +1076,23 @@ export function CurrentGameView({
         </div>
       )}
 
+      {/* Scene view */}
+      {viewMode === "scene" && started && (
+        <GameScene
+          prophets={prophets}
+          currentTurnIndex={currentTurnIndex}
+          totalTickets={game.totalTickets ?? null}
+          events={events}
+          neynarUsersMap={neynarUsersMap}
+          isEnded={ended}
+          winnerProphetIndex={game.winnerProphetIndex ?? null}
+          selectedProphetIndex={selectedProphetIndex}
+          onSelectProphet={setSelectedProphetIndex}
+        />
+      )}
+
+      {/* Basic prophet list */}
+      {(viewMode === "basic" || !started) && (
       <div className="rounded-lg border border-gray-800 p-3">
         <p className="mb-2 text-xs font-medium text-gray-500">Prophet list</p>
         <ul className="space-y-1 text-sm">
@@ -1162,6 +1216,7 @@ export function CurrentGameView({
             })}
         </ul>
       </div>
+      )}
 
       <NarrativeFeed events={events} prophets={prophets} neynarUsersMap={neynarUsersMap} />
     </div>
